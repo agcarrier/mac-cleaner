@@ -161,3 +161,43 @@ import Testing
     #expect(confidence["com.foo.updater Preferences"] == .low)
     #expect(!found.contains { $0.title == "com.foo.app" })
 }
+
+@Test func thresholdsAreParameters() throws {
+    let home = FileManager.default.temporaryDirectory.appending(path: "mac-cleaner-thresholds-\(UUID())")
+    defer { try? FileManager.default.removeItem(at: home) }
+    let now = Date()
+    let url = home.appending(path: "Downloads/New.pkg")
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("x".utf8).write(to: url)
+    try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(-3 * 86_400)], ofItemAtPath: url.path)
+
+    let c = Context(home: home, installed: [], running: [], thresholds: Thresholds(installerDays: 2, idleProjectDays: 60))
+    #expect(scanDownloads(c, now: now).first { $0.title == "New.pkg" }?.confidence == .high)
+    #expect(scanDownloads(Context(home: home, installed: [], running: []), now: now).first?.confidence == .low)
+}
+
+@Test func preselectionAndIDs() {
+    let trash = Finding(category: .caches, title: "a", detail: "", size: 1, confidence: .high, action: .trash([URL(filePath: "/tmp/a")]))
+    let low = Finding(category: .caches, title: "b", detail: "", size: 1, confidence: .low, action: .trash([URL(filePath: "/tmp/b")]))
+    let report = Finding(category: .large, title: "c", detail: "d", size: 1, confidence: .high, action: .report)
+    #expect(trash.isPreselected && !low.isPreselected && !report.isPreselected)
+    #expect(!report.isActionable && trash.isActionable)
+    #expect(trash.id == "caches|/tmp/a" && report.id == "large|c|d")
+    #expect(Set([trash.id, low.id, report.id]).count == 3)
+}
+
+@Test func scanReportsProgressInOrder() {
+    let home = FileManager.default.temporaryDirectory.appending(path: "mac-cleaner-progress-\(UUID())")
+    final class Box: @unchecked Sendable { var seen: [MacCleanerCore.Category] = [] }
+    let box = Box()
+    _ = scan([.downloads, .devcaches], Context(home: home, installed: [], running: [])) { box.seen.append($0) }
+    #expect(box.seen == [.devcaches, .downloads])
+}
+
+@Test func installedAppsAreTopLevelAndSorted() {
+    let apps = installedApps(home: FileManager.default.homeDirectoryForCurrentUser)
+    #expect(!apps.isEmpty)
+    #expect(!apps.contains { $0.url.path.contains("/Library/") || $0.url.deletingLastPathComponent().path.contains(".app") })
+    // Finder-style order: locale-aware and case-insensitive.
+    #expect(zip(apps, apps.dropFirst()).allSatisfy { $0.name.localizedCaseInsensitiveCompare($1.name) != .orderedDescending })
+}

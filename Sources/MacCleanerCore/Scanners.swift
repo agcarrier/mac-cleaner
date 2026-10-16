@@ -41,33 +41,75 @@ public struct Finding: Sendable {
     public let action: Action
 }
 
+extension Finding: Identifiable, Equatable {
+    /// Stable across rescans: the category plus what the finding would act on.
+    public var id: String {
+        switch action {
+        case .trash(let urls): "\(category.rawValue)|" + urls.map(\.path).joined(separator: "|")
+        case .run(let args): "\(category.rawValue)|" + args.joined(separator: " ")
+        case .report: "\(category.rawValue)|\(title)|\(detail)"
+        }
+    }
+
+    /// Report-only findings are never acted on.
+    public var isActionable: Bool { if case .report = action { false } else { true } }
+
+    /// The ✓ rule shared by the CLI and the app: only actionable, high-confidence findings start selected.
+    public var isPreselected: Bool { isActionable && confidence == .high }
+
+    public static func == (a: Finding, b: Finding) -> Bool { a.id == b.id }
+}
+
+/// Age rules the user can tune.
+public struct Thresholds: Sendable, Equatable {
+    public var installerDays: Int
+    public var idleProjectDays: Int
+
+    public init(installerDays: Int = 30, idleProjectDays: Int = 60) {
+        self.installerDays = installerDays
+        self.idleProjectDays = idleProjectDays
+    }
+}
+
 public struct Context: Sendable {
     public let home: URL
     public let installed: Set<String>  // lowercased bundle IDs, running apps included
     public let running: Set<String>    // lowercased bundle IDs
+    public let thresholds: Thresholds
 
-    public init(home: URL, installed: Set<String>, running: Set<String>) {
+    public init(home: URL, installed: Set<String>, running: Set<String>, thresholds: Thresholds = .init()) {
         self.home = home
         self.installed = installed
         self.running = running
+        self.thresholds = thresholds
     }
 
     var library: URL { home.appending(path: "Library") }
 }
 
-public func scan(_ categories: Set<Category>, _ c: Context) -> [Finding] {
-    (Category.scannable + Category.space).filter(categories.contains).flatMap { category -> [Finding] in
-        switch category {
-        case .orphans: scanOrphans(c)
-        case .caches: scanCaches(c)
-        case .agents: scanLaunchAgents(c)
-        case .xcode: scanXcode(c)
-        case .devcaches: scanDevCaches(c)
-        case .downloads: scanDownloads(c)
-        case .projects: scanNodeModules(c)
-        case .large: scanLargeFiles(c)
-        case .uninstall: []
-        }
+/// Runs each category in a fixed order, calling `progress` before each one. Stops early, returning what it has,
+/// when the surrounding task is cancelled.
+public func scan(_ categories: Set<Category>, _ c: Context, progress: @Sendable (Category) -> Void = { _ in }) -> [Finding] {
+    var out: [Finding] = []
+    for category in (Category.scannable + Category.space).filter(categories.contains) {
+        if Task.isCancelled { break }
+        progress(category)
+        out += scanCategory(category, c)
+    }
+    return out
+}
+
+func scanCategory(_ category: Category, _ c: Context) -> [Finding] {
+    switch category {
+    case .orphans: scanOrphans(c)
+    case .caches: scanCaches(c)
+    case .agents: scanLaunchAgents(c)
+    case .xcode: scanXcode(c)
+    case .devcaches: scanDevCaches(c)
+    case .downloads: scanDownloads(c)
+    case .projects: scanNodeModules(c)
+    case .large: scanLargeFiles(c)
+    case .uninstall: []
     }
 }
 

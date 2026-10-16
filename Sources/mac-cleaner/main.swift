@@ -84,8 +84,7 @@ sections = sections.map { section in
 }
 
 func bytes(_ n: Int64) -> String { ByteCountFormatter.string(fromByteCount: n, countStyle: .file) }
-func isReport(_ f: Finding) -> Bool { if case .report = f.action { true } else { false } }
-let isSelected = { [includeLow] (f: Finding) in !isReport(f) && (f.confidence == .high || includeLow) }
+let isSelected = { [includeLow] (f: Finding) in f.isPreselected || (f.isActionable && includeLow) }
 
 for section in sections {
     let group = section.findings.sorted { $0.size > $1.size }
@@ -93,7 +92,7 @@ for section in sections {
     if group.isEmpty { print("  nothing found") }
     for f in group {
         let size = bytes(f.size)
-        let mark = isReport(f) ? "·" : isSelected(f) ? "✓" : "○"
+        let mark = !f.isActionable ? "·" : isSelected(f) ? "✓" : "○"
         print("  \(mark) \(String(repeating: " ", count: max(0, 10 - size.count)))\(size)  \(f.title)  ·  \(f.detail)")
     }
 }
@@ -112,7 +111,7 @@ if (uninstalling || !categories.isDisjoint(with: [.orphans, .caches])), !canRead
 
 let selected = sections.flatMap(\.findings).filter(isSelected)
 let selectedSize = selected.reduce(0) { $0 + $1.size }
-print("\n✓ selected   ○ low confidence, skipped unless --include-low\(sections.flatMap(\.findings).contains(where: isReport) ? "   · listed only" : "")")
+print("\n✓ selected   ○ low confidence, skipped unless --include-low\(sections.flatMap(\.findings).contains { !$0.isActionable } ? "   · listed only" : "")")
 
 guard clean else {
     print("Dry run: \(selected.count) items (\(bytes(selectedSize))) would go to the Trash. Re-run with --clean to do it.")

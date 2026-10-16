@@ -38,7 +38,7 @@ func scanDownloads(_ c: Context, now: Date = .now) -> [Finding] {
         .map { url in
             let days = daysSince(modified(url), now)
             return Finding(category: .downloads, title: url.lastPathComponent, detail: "installer, \(days) days old",
-                           size: allocatedSize(url), confidence: days >= 30 ? .high : .low, action: .trash([url]))
+                           size: allocatedSize(url), confidence: days >= c.thresholds.installerDays ? .high : .low, action: .trash([url]))
         }
 }
 
@@ -54,7 +54,7 @@ func scanNodeModules(_ c: Context, now: Date = .now, found: [URL]? = nil) -> [Fi
             let touched = [project, project.appending(path: "package.json"), project.appending(path: ".git/index")].compactMap(modified).max()
             let days = daysSince(touched, now)
             let size = allocatedSize(modules)
-            guard days >= 60, size > 0 else { return nil }
+            guard days >= c.thresholds.idleProjectDays, size > 0 else { return nil }
             let shown = project.path.replacingOccurrences(of: c.home.path, with: "~")
             return Finding(category: .projects, title: project.lastPathComponent, detail: "\(shown), untouched \(days) days, `npm install` restores it",
                            size: size, confidence: .low, action: .trash([modules]))

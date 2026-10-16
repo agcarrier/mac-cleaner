@@ -43,19 +43,29 @@ public struct SystemItem: Sendable {
     public let command: String
 }
 
+/// Apps people installed, sorted by name: skips the Trash, mounted disk images, helper apps nested in other bundles,
+/// and private copies tucked inside Library folders (Claude Code keeps several in Application Support).
+public func installedApps(home: URL) -> [AppInfo] {
+    installedAppPaths(home: home)
+        .filter { !$0.contains("/.Trash/") && !$0.hasPrefix("/Volumes/") && !$0.contains("/Library/")
+            && !($0 as NSString).deletingLastPathComponent.contains(".app") }
+        .compactMap { AppInfo(url: URL(filePath: $0)) }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+}
+
+/// When the app was last opened, per Spotlight.
+public func lastUsedDate(_ url: URL) -> Date? {
+    guard let item = MDItemCreateWithURL(nil, url as CFURL) else { return nil }
+    return MDItemCopyAttribute(item, kMDItemLastUsedDate) as? Date
+}
+
 /// Resolves a .app path, a bundle ID, or an app name. `exact` is false when nothing matched exactly and these
 /// are only "name contains" suggestions, which the caller must not act on.
 public func findApps(matching query: String, home: URL) -> (apps: [AppInfo], exact: Bool) {
     let path = (query as NSString).expandingTildeInPath
     if path.hasSuffix(".app"), let app = AppInfo(url: URL(filePath: path)) { return ([app], true) }
     let q = query.lowercased()
-    // Apps people installed: skip the Trash, mounted disk images, helper apps nested in other bundles,
-    // and private copies tucked inside Library folders (Claude Code keeps several in Application Support).
-    let apps = installedAppPaths(home: home)
-        .filter { !$0.contains("/.Trash/") && !$0.hasPrefix("/Volumes/") && !$0.contains("/Library/")
-            && !($0 as NSString).deletingLastPathComponent.contains(".app") }
-        .sorted()
-        .compactMap { AppInfo(url: URL(filePath: $0)) }
+    let apps = installedApps(home: home)
     func names(_ app: AppInfo) -> [String] {
         [app.bundleID, app.name, app.url.deletingPathExtension().lastPathComponent].map { $0.lowercased() }
     }
