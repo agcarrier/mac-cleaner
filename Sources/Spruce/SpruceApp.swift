@@ -1,10 +1,14 @@
 import SwiftUI
+import MacCleanerCore
+import SpruceKit
 
 @main
 struct SpruceApp: App {
+    @State private var state = AppState()
+
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(state: state)
         }
         .defaultSize(width: 900, height: 600)
 
@@ -14,7 +18,17 @@ struct SpruceApp: App {
     }
 }
 
+/// One model per tool, so results survive switching tools within a session.
+@MainActor @Observable
+final class AppState {
+    let smartCare = ScanModel(onlyPreselected: true,
+                              scanner: liveScanner(Set(MacCleanerCore.Category.scannable).union([.devcaches, .downloads]), thresholds: { currentThresholds() }))
+    let cleanup = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.scannable), thresholds: { currentThresholds() }))
+    let space = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.space), thresholds: { currentThresholds() }))
+}
+
 struct RootView: View {
+    let state: AppState
     @State private var tool: Tool? = .smartCare
 
     var body: some View {
@@ -25,14 +39,20 @@ struct RootView: View {
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
         } detail: {
             let current = tool ?? .smartCare
-            VStack {
-                ToolHeader(tool: current)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(ToolWash(tint: current.tint))
-            .navigationTitle(current.title)
+            detail(for: current)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(ToolWash(tint: current.tint))
+                .navigationTitle(current.title)
         }
         .frame(minWidth: 760, minHeight: 520)
+    }
+
+    @ViewBuilder private func detail(for tool: Tool) -> some View {
+        switch tool {
+        case .smartCare: ScanToolView(tool: tool, model: state.smartCare, showsPermissionNote: true)
+        case .cleanup: ScanToolView(tool: tool, model: state.cleanup, showsPermissionNote: true)
+        case .space: ScanToolView(tool: tool, model: state.space)
+        case .applications: VStack { ToolHeader(tool: tool); Spacer() }
+        }
     }
 }
