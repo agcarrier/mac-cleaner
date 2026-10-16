@@ -8,5 +8,7 @@ let package = Package(
         .target(name: "MacCleanerCore"),
         .executableTarget(name: "mac-cleaner", dependencies: ["MacCleanerCore"]),
         .testTarget(name: "MacCleanerCoreTests", dependencies: ["MacCleanerCore"]),
+        .target(name: "SpruceKit", dependencies: ["MacCleanerCore"]),
+        .testTarget(name: "SpruceKitTests", dependencies: ["SpruceKit", "MacCleanerCore"]),
     ]
 )
