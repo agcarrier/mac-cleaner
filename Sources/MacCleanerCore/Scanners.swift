@@ -1,7 +1,10 @@
 import Foundation
 
-public enum Category: String, CaseIterable, Sendable {
-    case orphans, caches, agents, xcode
+public enum Category: String, Sendable {
+    case orphans, caches, agents, xcode, uninstall
+
+    /// What a plain scan covers; `uninstall` is its own command.
+    public static let scannable: [Category] = [.orphans, .caches, .agents, .xcode]
 
     public var title: String {
         switch self {
@@ -9,6 +12,7 @@ public enum Category: String, CaseIterable, Sendable {
         case .caches: "App caches"
         case .agents: "Broken launch agents"
         case .xcode: "Xcode junk"
+        case .uninstall: "Uninstall"
         }
     }
 }
@@ -44,12 +48,13 @@ public struct Context: Sendable {
 }
 
 public func scan(_ categories: Set<Category>, _ c: Context) -> [Finding] {
-    Category.allCases.filter(categories.contains).flatMap { category -> [Finding] in
+    Category.scannable.filter(categories.contains).flatMap { category -> [Finding] in
         switch category {
         case .orphans: scanOrphans(c)
         case .caches: scanCaches(c)
         case .agents: scanLaunchAgents(c)
         case .xcode: scanXcode(c)
+        case .uninstall: []
         }
     }
 }
@@ -66,7 +71,8 @@ public func perform(_ action: Action) throws {
 
 // MARK: - Installed apps
 
-public func installedBundleIDs(home: URL) -> Set<String> {
+/// Every app bundle Spotlight knows about, including nested helper apps, plus a folder walk.
+public func installedAppPaths(home: URL) -> Set<String> {
     var paths = Set(String(decoding: run(["mdfind", "kMDItemContentType == 'com.apple.application-bundle'"]).1, as: UTF8.self)
         .split(separator: "\n").map(String.init))
     // Fallback for when Spotlight is off or still indexing: app folders plus one level of subfolders (Utilities, vendor folders).
@@ -75,7 +81,11 @@ public func installedBundleIDs(home: URL) -> Set<String> {
             if url.pathExtension == "app" { paths.insert(url.path) } else { children(url).filter { $0.pathExtension == "app" }.forEach { paths.insert($0.path) } }
         }
     }
-    return Set(paths.compactMap { Bundle(path: $0)?.bundleIdentifier?.lowercased() })
+    return paths
+}
+
+public func installedBundleIDs(home: URL) -> Set<String> {
+    Set(installedAppPaths(home: home).compactMap { Bundle(path: $0)?.bundleIdentifier?.lowercased() })
 }
 
 // MARK: - Orphans
@@ -152,9 +162,8 @@ func scanLaunchAgents(_ c: Context) -> [Finding] {
         guard let plist = NSDictionary(contentsOf: url) else { return nil }
         let label = plist["Label"] as? String ?? url.deletingPathExtension().lastPathComponent
         if label.lowercased().hasPrefix("com.apple.") { return nil }
-        // AssociatedBundleIdentifiers is Apple's own app link; it can be a string or an array.
-        let apps = plist["AssociatedBundleIdentifiers"] as? [String] ?? (plist["AssociatedBundleIdentifiers"] as? String).map { [$0] } ?? []
-        let program = plist["Program"] as? String ?? (plist["ProgramArguments"] as? [String])?.first
+        let apps = associatedApps(plist)
+        let program = launchProgram(plist)
         let why: String
         if let program, program.hasPrefix("/"), !FileManager.default.fileExists(atPath: program) {
             why = "program is gone: \(program)"
@@ -165,6 +174,15 @@ func scanLaunchAgents(_ c: Context) -> [Finding] {
         }
         return Finding(category: .agents, title: label, detail: why, size: allocatedSize(url), confidence: .high, action: .trash([url]))
     }
+}
+
+/// AssociatedBundleIdentifiers is Apple's own link from a launch item to its app; it can be a string or an array.
+func associatedApps(_ plist: NSDictionary) -> [String] {
+    plist["AssociatedBundleIdentifiers"] as? [String] ?? (plist["AssociatedBundleIdentifiers"] as? String).map { [$0] } ?? []
+}
+
+func launchProgram(_ plist: NSDictionary) -> String? {
+    plist["Program"] as? String ?? (plist["ProgramArguments"] as? [String])?.first
 }
 
 // MARK: - Xcode

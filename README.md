@@ -1,6 +1,6 @@
 # mac-cleaner
 
-Clean-room Mac cleaner CLI: leftovers from deleted apps, app caches, broken launch agents, and Xcode junk.
+Clean-room Mac cleaner CLI: leftovers from deleted apps, app caches, broken launch agents, and Xcode junk, plus `mac-cleaner uninstall <app>` to remove an app and everything it owns.
 Dry run by default. Cleaning moves things to the Trash, never hard-deletes. How it decides what's safe: [SPEC.md](SPEC.md).
 
 This folder is iCloud-synced, so build outside it:
