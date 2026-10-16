@@ -52,7 +52,7 @@ struct RootView: View {
         case .smartCare: ScanToolView(tool: tool, model: state.smartCare, showsPermissionNote: true)
         case .cleanup: ScanToolView(tool: tool, model: state.cleanup, showsPermissionNote: true)
         case .space: ScanToolView(tool: tool, model: state.space)
-        case .applications: VStack { ToolHeader(tool: tool); Spacer() }
+        case .applications: ApplicationsView()
         }
     }
 }
