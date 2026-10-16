@@ -2,18 +2,20 @@ import AppKit
 import MacCleanerCore
 
 let usage = """
-usage: mac-cleaner [--clean] [--yes] [--include-low] [--only=orphans,caches,agents,xcode]
+usage: mac-cleaner [--clean] [--yes] [--include-low] [--only=orphans,caches,agents,xcode] [--filter=text,…]
 
 Dry run by default: lists what it would move to the Trash and touches nothing.
   --clean        move the ✓ items to the Trash (unavailable simulators are deleted with simctl)
   --yes          skip the confirmation prompt
   --include-low  also act on ○ low-confidence items
   --only=…       limit the scan to some categories
+  --filter=…     only items whose name contains one of these (case-insensitive), e.g. --filter=spotify
 
 """
 
 var clean = false, yes = false, includeLow = false
 var categories = Set(Category.allCases)
+var filters: [String] = []
 for arg in CommandLine.arguments.dropFirst() {
     switch arg {
     case "--clean": clean = true
@@ -25,6 +27,9 @@ for arg in CommandLine.arguments.dropFirst() {
         let parsed = names.compactMap(Category.init(rawValue:))
         guard !parsed.isEmpty, parsed.count == names.count else { fallthrough }
         categories = Set(parsed)
+    case _ where arg.hasPrefix("--filter="):
+        filters = arg.dropFirst("--filter=".count).split(separator: ",").map { $0.lowercased() }
+        guard !filters.isEmpty else { fallthrough }
     default:
         FileHandle.standardError.write(Data("unknown option: \(arg)\n\n\(usage)".utf8))
         exit(2)
@@ -35,7 +40,9 @@ let home = FileManager.default.homeDirectoryForCurrentUser
 let running = Set(NSWorkspace.shared.runningApplications.compactMap { $0.bundleIdentifier?.lowercased() })
 let context = Context(home: home, installed: installedBundleIDs(home: home).union(running), running: running)
 print("Scanning…")
-let findings = scan(categories, context)
+let findings = scan(categories, context).filter { [filters] f in
+    filters.isEmpty || filters.contains { f.title.lowercased().contains($0) }
+}
 
 func bytes(_ n: Int64) -> String { ByteCountFormatter.string(fromByteCount: n, countStyle: .file) }
 let isSelected = { [includeLow] (f: Finding) in f.confidence == .high || includeLow }
