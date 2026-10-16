@@ -99,6 +99,19 @@ No name guessing at this step, so it's safe to auto-select.
 
 Not looked at (out of scope): the encrypted knowledge base contents, and the word-matching implementation in `CMDirectoryFileFinderRequest`.
 
+### Our uninstaller rules (`mac-cleaner uninstall`, built 2026-10-15)
+
+- **Finding the app:** a `.app` path, an exact bundle ID, or an exact app/file name. Anything partial only prints suggestions.
+  Skips the Trash, `/Volumes`, helper apps nested in bundles, and private copies inside `Library` folders.
+- **Refuses** `com.apple.*` and `/System` apps, and apps that are running.
+- **✓ by bundle ID** (the ID or a child like `id.helper`, never a look-alike like `com.foo.apple` for `com.foo.app`):
+  Preferences (+ ByHost), Application Support, Caches, Saved Application State, HTTPStorages, WebKit, Cookies, Logs,
+  Application Scripts, and Containers (owner read from container metadata).
+- **✓ launch agents** linked by `AssociatedBundleIdentifiers`, by Label, or because their program lives inside the app.
+- **✓ crash reports** in `Logs/DiagnosticReports` named `<App>-…` or `<App>_…`.
+- **○ name-only** folders (`Application Support/<App>`, `Caches/<App>`, `Logs/<App>`), which may be shared by a vendor's other apps.
+- Not covered yet: Group Containers, `/Library` system-wide items, installer receipts (`pkgutil`), login items registered through SMAppService.
+
 ## Other scanners
 
 - **Trash:** user trash, mounted volumes' `.Trashes`, Mail trash.

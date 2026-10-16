@@ -17,11 +17,11 @@ public struct AppInfo: Sendable {
     public var isApple: Bool { bundleID.lowercased().hasPrefix("com.apple.") || url.path.hasPrefix("/System/") }
 }
 
-/// Resolves a .app path, a bundle ID, or an app name. Exact matches win; otherwise falls back to "name contains".
-/// More than one result means the query is ambiguous.
-public func findApps(matching query: String, home: URL) -> [AppInfo] {
+/// Resolves a .app path, a bundle ID, or an app name. `exact` is false when nothing matched exactly and these
+/// are only "name contains" suggestions, which the caller must not act on.
+public func findApps(matching query: String, home: URL) -> (apps: [AppInfo], exact: Bool) {
     let path = (query as NSString).expandingTildeInPath
-    if path.hasSuffix(".app"), let app = AppInfo(url: URL(filePath: path)) { return [app] }
+    if path.hasSuffix(".app"), let app = AppInfo(url: URL(filePath: path)) { return ([app], true) }
     let q = query.lowercased()
     // Apps people installed: skip the Trash, mounted disk images, helper apps nested in other bundles,
     // and private copies tucked inside Library folders (Claude Code keeps several in Application Support).
@@ -34,7 +34,7 @@ public func findApps(matching query: String, home: URL) -> [AppInfo] {
         [app.bundleID, app.name, app.url.deletingPathExtension().lastPathComponent].map { $0.lowercased() }
     }
     let exact = apps.filter { names($0).contains(q) }
-    return exact.isEmpty ? apps.filter { names($0).contains { $0.contains(q) } } : exact
+    return exact.isEmpty ? (apps.filter { names($0).contains { $0.contains(q) } }, false) : (exact, true)
 }
 
 /// The app bundle plus everything in ~/Library that belongs to it.

@@ -56,12 +56,11 @@ var sections: [(title: String, findings: [Finding])] = []
 if uninstalling {
     guard !query.isEmpty else { fail("Which app? e.g. mac-cleaner uninstall Spotify\n\n\(usage)") }
     let name = query.joined(separator: " ")
-    let matches = findApps(matching: name, home: home)
+    let (matches, exact) = findApps(matching: name, home: home)
+    func list(_ apps: [AppInfo]) -> String { apps.map { "  \($0.name)  (\($0.bundleID))  \($0.url.path)" }.joined(separator: "\n") }
     guard let app = matches.first else { fail("No installed app matches “\(name)”.", 1) }
-    guard matches.count == 1 else {
-        fail("Several apps match “\(name)”:\n" + matches.map { "  \($0.name)  (\($0.bundleID))  \($0.url.path)" }.joined(separator: "\n")
-             + "\nUse the full name, the bundle ID, or the .app path.")
-    }
+    guard exact else { fail("No app is named “\(name)”. Did you mean:\n\(list(matches))\nRe-run with the full name, the bundle ID, or the .app path.", 1) }
+    guard matches.count == 1 else { fail("Several apps match “\(name)”:\n\(list(matches))\nUse the bundle ID or the .app path.") }
     if app.isApple { fail("\(app.name) is part of macOS. mac-cleaner won't uninstall Apple apps.", 1) }
     if running.contains(app.bundleID.lowercased()) { fail("\(app.name) is running. Quit it first.", 1) }
     let context = Context(home: home, installed: [], running: running)
