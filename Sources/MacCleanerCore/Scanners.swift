@@ -2,9 +2,12 @@ import Foundation
 
 public enum Category: String, Sendable {
     case orphans, caches, agents, xcode, uninstall
+    case devcaches, downloads, projects, large
 
-    /// What a plain scan covers; `uninstall` is its own command.
+    /// What a plain scan covers.
     public static let scannable: [Category] = [.orphans, .caches, .agents, .xcode]
+    /// What `mac-cleaner space` covers.
+    public static let space: [Category] = [.devcaches, .downloads, .projects, .large]
 
     public var title: String {
         switch self {
@@ -13,6 +16,10 @@ public enum Category: String, Sendable {
         case .agents: "Broken launch agents"
         case .xcode: "Xcode junk"
         case .uninstall: "Uninstall"
+        case .devcaches: "Package & tool caches"
+        case .downloads: "Old installers in Downloads"
+        case .projects: "node_modules in idle projects"
+        case .large: "Largest files (listed only, never cleaned)"
         }
     }
 }
@@ -22,6 +29,7 @@ public enum Confidence: Sendable { case high, low }
 public enum Action: Sendable {
     case trash([URL])
     case run([String])
+    case report  // shown for information, never acted on
 }
 
 public struct Finding: Sendable {
@@ -48,12 +56,16 @@ public struct Context: Sendable {
 }
 
 public func scan(_ categories: Set<Category>, _ c: Context) -> [Finding] {
-    Category.scannable.filter(categories.contains).flatMap { category -> [Finding] in
+    (Category.scannable + Category.space).filter(categories.contains).flatMap { category -> [Finding] in
         switch category {
         case .orphans: scanOrphans(c)
         case .caches: scanCaches(c)
         case .agents: scanLaunchAgents(c)
         case .xcode: scanXcode(c)
+        case .devcaches: scanDevCaches(c)
+        case .downloads: scanDownloads(c)
+        case .projects: scanNodeModules(c)
+        case .large: scanLargeFiles(c)
         case .uninstall: []
         }
     }
@@ -66,6 +78,8 @@ public func perform(_ action: Action) throws {
     case .run(let args):
         let (status, _) = run(args)
         if status != 0 { throw CocoaError(.executableLoad, userInfo: [NSLocalizedDescriptionKey: "\(args.joined(separator: " ")) exited \(status)"]) }
+    case .report:
+        break
     }
 }
 
@@ -129,10 +143,16 @@ func containerOwner(_ dir: URL) -> String? {
 
 // MARK: - Caches
 
+/// Apple frameworks that cache under plain names instead of com.apple.* IDs. Only names known to be Apple's;
+/// anything unsure stays visible as ○.
+let appleCacheNames: Set<String> = ["ARFileCache", "CloudKit", "EnergyKit", "FamilyCircle", "familycircled", "GameKit",
+                                    "GeoServices", "JetPackResourceBundles", "LSMImageCache", "PassKit", "ProfileAvatars", "TrickPlay"]
+
 func scanCaches(_ c: Context) -> [Finding] {
     var out: [Finding] = []
     for url in children(c.library.appending(path: "Caches")) {
         let name = url.lastPathComponent
+        if appleCacheNames.contains(name) { continue }
         // Named caches (Homebrew, ms-playwright, pip, ...) have no bundle ID, so we can't tell if their owner is running.
         var confidence = Confidence.low
         if looksLikeBundleID(name) {

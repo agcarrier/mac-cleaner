@@ -3,9 +3,11 @@ import MacCleanerCore
 
 let usage = """
 usage: mac-cleaner [--clean] [--yes] [--include-low] [--only=orphans,caches,agents,xcode] [--filter=text,…]
+       mac-cleaner space [--clean] [--yes] [--include-low] [--only=devcaches,downloads,projects,large] [--filter=text,…]
        mac-cleaner uninstall <app name | bundle ID | path.app> [--clean] [--yes] [--include-low]
 
 Dry run by default: lists what it would move to the Trash and touches nothing.
+  space          where the big, re-creatable stuff is: package caches, old installers, idle node_modules, largest files
   uninstall      the app plus everything in ~/Library that belongs to it
   --clean        move the ✓ items to the Trash (unavailable simulators are deleted with simctl)
   --yes          skip the confirmation prompt
@@ -22,10 +24,12 @@ func fail(_ message: String, _ code: Int32 = 2) -> Never {
 
 var args = Array(CommandLine.arguments.dropFirst())
 let uninstalling = args.first == "uninstall"
-if uninstalling { args.removeFirst() }
+let spaceMode = args.first == "space"
+if uninstalling || spaceMode { args.removeFirst() }
+let available = spaceMode ? Category.space : Category.scannable
 
 var clean = false, yes = false, includeLow = false
-var categories = Set(Category.scannable)
+var categories = Set(available)
 var filters: [String] = []
 var query: [String] = []
 for arg in args {
@@ -36,7 +40,7 @@ for arg in args {
     case "-h", "--help": print(usage, terminator: ""); exit(0)
     case _ where arg.hasPrefix("--only="):
         let names = arg.dropFirst("--only=".count).split(separator: ",").map(String.init)
-        let parsed = names.compactMap(Category.init(rawValue:)).filter(Category.scannable.contains)
+        let parsed = names.compactMap(Category.init(rawValue:)).filter(available.contains)
         guard !parsed.isEmpty, parsed.count == names.count else { fallthrough }
         categories = Set(parsed)
     case _ where arg.hasPrefix("--filter="):
@@ -68,17 +72,20 @@ if uninstalling {
     sections = [("Uninstall \(app.name)  (\(app.bundleID))", uninstallFindings(for: app, context))]
     system = systemItems(for: app)
 } else {
-    let context = Context(home: home, installed: installedBundleIDs(home: home).union(running), running: running)
+    // The space scan doesn't judge ownership, so it skips the installed-app lookup.
+    let installed = spaceMode ? [] : installedBundleIDs(home: home).union(running)
+    let context = Context(home: home, installed: installed, running: running)
     print("Scanning…")
     let all = scan(categories, context)
-    sections = Category.scannable.filter(categories.contains).map { category in (category.title, all.filter { $0.category == category }) }
+    sections = available.filter(categories.contains).map { category in (category.title, all.filter { $0.category == category }) }
 }
 sections = sections.map { section in
     (section.title, section.findings.filter { [filters] f in filters.isEmpty || filters.contains { f.title.lowercased().contains($0) } })
 }
 
 func bytes(_ n: Int64) -> String { ByteCountFormatter.string(fromByteCount: n, countStyle: .file) }
-let isSelected = { [includeLow] (f: Finding) in f.confidence == .high || includeLow }
+func isReport(_ f: Finding) -> Bool { if case .report = f.action { true } else { false } }
+let isSelected = { [includeLow] (f: Finding) in !isReport(f) && (f.confidence == .high || includeLow) }
 
 for section in sections {
     let group = section.findings.sorted { $0.size > $1.size }
@@ -86,7 +93,8 @@ for section in sections {
     if group.isEmpty { print("  nothing found") }
     for f in group {
         let size = bytes(f.size)
-        print("  \(isSelected(f) ? "✓" : "○") \(String(repeating: " ", count: max(0, 10 - size.count)))\(size)  \(f.title)  ·  \(f.detail)")
+        let mark = isReport(f) ? "·" : isSelected(f) ? "✓" : "○"
+        print("  \(mark) \(String(repeating: " ", count: max(0, 10 - size.count)))\(size)  \(f.title)  ·  \(f.detail)")
     }
 }
 
@@ -104,7 +112,7 @@ if (uninstalling || !categories.isDisjoint(with: [.orphans, .caches])), !canRead
 
 let selected = sections.flatMap(\.findings).filter(isSelected)
 let selectedSize = selected.reduce(0) { $0 + $1.size }
-print("\n✓ selected   ○ low confidence, skipped unless --include-low")
+print("\n✓ selected   ○ low confidence, skipped unless --include-low\(sections.flatMap(\.findings).contains(where: isReport) ? "   · listed only" : "")")
 
 guard clean else {
     print("Dry run: \(selected.count) items (\(bytes(selectedSize))) would go to the Trash. Re-run with --clean to do it.")

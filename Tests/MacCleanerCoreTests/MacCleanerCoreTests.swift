@@ -96,6 +96,45 @@ import Testing
     #expect(why["installer receipt org.other"] == nil)
 }
 
+/// Space rules: installers ✓ only after 30 days, node_modules listed (○) only after 60 idle days and only at
+/// the top level, and Apple's plain-named caches never shown.
+@Test func spaceRules() throws {
+    let home = FileManager.default.temporaryDirectory.appending(path: "mac-cleaner-space-\(UUID())")
+    defer { try? FileManager.default.removeItem(at: home) }
+    let now = Date()
+    func touch(_ path: String, daysAgo: Double = 0) throws {
+        let url = home.appending(path: path)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: url)
+        let date = now.addingTimeInterval(-daysAgo * 86_400)
+        for target in [url, url.deletingLastPathComponent()] {
+            try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: target.path)
+        }
+    }
+    try touch("Downloads/Old.dmg", daysAgo: 45)
+    try touch("Downloads/New.pkg", daysAgo: 3)
+    try touch("Downloads/notes.pdf", daysAgo: 400)                 // not an installer
+    try touch("code/idle/node_modules/pkg/index.js", daysAgo: 90)
+    try touch("code/idle/package.json", daysAgo: 90)
+    try touch("code/busy/node_modules/pkg/index.js", daysAgo: 90)
+    try touch("code/busy/package.json", daysAgo: 2)                 // recent work
+    try touch("Library/Caches/GeoServices/blob")                     // Apple, hidden
+    try touch("Library/Caches/Homebrew/blob")                        // not Apple, shown
+
+    let c = Context(home: home, installed: [], running: [])
+    let downloads = Dictionary(scanDownloads(c, now: now).map { ($0.title, $0.confidence) }, uniquingKeysWith: { a, _ in a })
+    #expect(downloads == ["Old.dmg": .high, "New.pkg": .low])
+
+    let found = ["code/idle/node_modules", "code/busy/node_modules", "code/idle/node_modules/pkg/node_modules"].map { home.appending(path: $0) }
+    let projects = scanNodeModules(c, now: now, found: found)
+    #expect(projects.map(\.title) == ["idle"])
+    #expect(projects.first?.confidence == .low)
+
+    let caches = scanCaches(c).map(\.title)
+    #expect(!caches.contains("GeoServices"))
+    #expect(caches.contains("Homebrew"))
+}
+
 /// The safety rule: a lone orphaned pref might belong to a CLI tool, so it stays low confidence
 /// unless a container or saved window state proves a GUI app owned it.
 @Test func orphanConfidence() throws {

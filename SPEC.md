@@ -118,6 +118,17 @@ Not looked at (out of scope): the encrypted knowledge base contents, and the wor
   `sudo pkgutil --forget` commands for the user to review and run.
 - Not covered yet: login items registered through SMAppService, files a pkg installed elsewhere (`pkgutil --files`).
 
+### Space finder rules (`mac-cleaner space`, built 2026-10-16)
+
+Not from the teardown; this covers where a developer Mac's space actually goes.
+- **Package & tool caches** at known paths: npm `_cacache`, uv, bun, Yarn, pnpm store, pip, Homebrew, Gradle, Cargo, Xcode SwiftUI previews are ✓
+  (they refill on their own). Playwright and Puppeteer browsers and `~/.npm/_npx` are ○ (long re-download; npx also holds tools like REA).
+- **Installers in Downloads** (`.dmg .pkg .mpkg .iso`): ✓ after 30 days, ○ before.
+- **node_modules**, top level only, found with Spotlight: listed ○ when the project shows no activity for 60+ days.
+  Activity = newest of the project folder, `package.json`, and `.git/index`.
+- **Files over 1 GB** outside Library folders: listed only (`·`), never cleaned.
+- Regular-scan noise fix: Apple frameworks that cache under plain names (CloudKit, GeoServices, PassKit, …) are skipped.
+
 ## Other scanners
 
 - **Trash:** user trash, mounted volumes' `.Trashes`, Mail trash.
