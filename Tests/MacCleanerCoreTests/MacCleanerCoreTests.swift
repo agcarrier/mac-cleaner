@@ -57,6 +57,45 @@ import Testing
     #expect(confidence["com.other.agent.plist"] == nil)
 }
 
+/// App groups named after the app are its own; developer-wide groups may be shared.
+/// System-wide items are matched by link or by developer, and never by look-alike IDs.
+@Test func groupsAndSystemItems() throws {
+    let root = FileManager.default.temporaryDirectory.appending(path: "mac-cleaner-system-\(UUID())")
+    defer { try? FileManager.default.removeItem(at: root) }
+    func touch(_ path: String, _ contents: Data = Data("x".utf8)) throws {
+        let url = root.appending(path: path)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try contents.write(to: url)
+    }
+    func plist(_ dict: [String: Any]) throws -> Data { try PropertyListSerialization.data(fromPropertyList: dict, format: .xml, options: 0) }
+
+    try touch("Apps/Fake.app/Contents/Info.plist", plist(["CFBundleIdentifier": "com.fake.app", "CFBundleName": "Fake"]))
+    try touch("Library/Group Containers/TEAM.com.fake.app/data")   // ✓ named after the app
+    try touch("Library/Group Containers/TEAM.com.fake/data")       // ○ developer-wide
+    try touch("Library/LaunchDaemons/com.fake.helper.plist", plist(["Label": "com.fake.helper"]))           // same developer
+    try touch("Library/LaunchDaemons/com.fakeother.plist", plist(["Label": "com.fakeother"]))               // ✗ look-alike
+    try touch("Library/LaunchDaemons/net.x.plist", plist(["Label": "net.x", "AssociatedBundleIdentifiers": "com.fake.app"]))  // linked
+    try touch("Library/PrivilegedHelperTools/com.fake.app.daemon")                                          // linked
+
+    let app = try #require(AppInfo(url: root.appending(path: "Apps/Fake.app")))
+    let found = uninstallFindings(for: app, Context(home: root, installed: [], running: []), groups: ["TEAM.com.fake.app", "TEAM.com.fake", "TEAM.com.fake.missing"])
+    let confidence = Dictionary(found.map { ($0.title, $0.confidence) }, uniquingKeysWith: { a, _ in a })
+    #expect(confidence["TEAM.com.fake.app"] == .high)
+    #expect(confidence["TEAM.com.fake"] == .low)
+    #expect(confidence["TEAM.com.fake.missing"] == nil)
+
+    let system = systemItems(for: app, root: root, receipts: ["com.fake.app", "com.fake.pkg", "com.fakeother", "org.other"])
+    let why = Dictionary(system.map { (($0.path as NSString).lastPathComponent, $0.why) }, uniquingKeysWith: { a, _ in a })
+    #expect(why["com.fake.helper.plist"] == "same developer")
+    #expect(why["net.x.plist"] == "linked to the app")
+    #expect(why["com.fake.app.daemon"] == "linked to the app")
+    #expect(why["installer receipt com.fake.app"] == "linked to the app")
+    #expect(why["installer receipt com.fake.pkg"] == "same developer")
+    #expect(why["com.fakeother.plist"] == nil)
+    #expect(why["installer receipt com.fakeother"] == nil)
+    #expect(why["installer receipt org.other"] == nil)
+}
+
 /// The safety rule: a lone orphaned pref might belong to a CLI tool, so it stays low confidence
 /// unless a container or saved window state proves a GUI app owned it.
 @Test func orphanConfidence() throws {

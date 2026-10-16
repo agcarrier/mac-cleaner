@@ -110,7 +110,13 @@ Not looked at (out of scope): the encrypted knowledge base contents, and the wor
 - **✓ launch agents** linked by `AssociatedBundleIdentifiers`, by Label, or because their program lives inside the app.
 - **✓ crash reports** in `Logs/DiagnosticReports` named `<App>-…` or `<App>_…`.
 - **○ name-only** folders (`Application Support/<App>`, `Caches/<App>`, `Logs/<App>`), which may be shared by a vendor's other apps.
-- Not covered yet: Group Containers, `/Library` system-wide items, installer receipts (`pkgutil`), login items registered through SMAppService.
+- **Group Containers** come from the app's signed `com.apple.security.application-groups` entitlement, not from folder names.
+  ✓ when the group ID contains the app's bundle ID (`TEAM.ru.keepcoder.Telegram`), ○ when it's developer-wide (`TEAM.dev.warp`, `group.com.docker`).
+- **System-wide items, report only** (they need admin): `/Library/LaunchDaemons` and `/Library/LaunchAgents` plists, `/Library/PrivilegedHelperTools`,
+  and `pkgutil` receipts. Each is labeled "linked to the app" (bundle ID, AssociatedBundleIdentifiers, or a program inside the app) or "same developer"
+  (reverse-DNS vendor prefix, e.g. `com.docker.vmnetd` for `com.docker.docker`). The CLI prints the exact `sudo launchctl bootout` / `sudo mv … ~/.Trash/` /
+  `sudo pkgutil --forget` commands for the user to review and run.
+- Not covered yet: login items registered through SMAppService, files a pkg installed elsewhere (`pkgutil --files`).
 
 ## Other scanners
 

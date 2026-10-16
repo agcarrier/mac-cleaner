@@ -53,6 +53,7 @@ let home = FileManager.default.homeDirectoryForCurrentUser
 let running = Set(NSWorkspace.shared.runningApplications.compactMap { $0.bundleIdentifier?.lowercased() })
 
 var sections: [(title: String, findings: [Finding])] = []
+var system: [SystemItem] = []
 if uninstalling {
     guard !query.isEmpty else { fail("Which app? e.g. mac-cleaner uninstall Spotify\n\n\(usage)") }
     let name = query.joined(separator: " ")
@@ -65,6 +66,7 @@ if uninstalling {
     if running.contains(app.bundleID.lowercased()) { fail("\(app.name) is running. Quit it first.", 1) }
     let context = Context(home: home, installed: [], running: running)
     sections = [("Uninstall \(app.name)  (\(app.bundleID))", uninstallFindings(for: app, context))]
+    system = systemItems(for: app)
 } else {
     let context = Context(home: home, installed: installedBundleIDs(home: home).union(running), running: running)
     print("Scanning…")
@@ -86,6 +88,13 @@ for section in sections {
         let size = bytes(f.size)
         print("  \(isSelected(f) ? "✓" : "○") \(String(repeating: " ", count: max(0, 10 - size.count)))\(size)  \(f.title)  ·  \(f.detail)")
     }
+}
+
+if !system.isEmpty {
+    print("\nSystem-wide items  (need your admin password, so mac-cleaner won't touch them)")
+    for item in system { print("  • \(item.path)  ·  \(item.why)") }
+    print("  To remove them yourself, check each line first, then run:")
+    for item in system { print("    \(item.command)") }
 }
 
 if (uninstalling || !categories.isDisjoint(with: [.orphans, .caches])), !canReadContainers(home: home) {

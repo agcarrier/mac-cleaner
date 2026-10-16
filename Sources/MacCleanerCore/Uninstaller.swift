@@ -15,6 +15,32 @@ public struct AppInfo: Sendable {
     }
 
     public var isApple: Bool { bundleID.lowercased().hasPrefix("com.apple.") || url.path.hasPrefix("/System/") }
+
+    /// The app's own ID or a child of it (helpers, extensions): com.foo.app, com.foo.app.helper. Never com.foo.apple.
+    func owns(_ name: String) -> Bool {
+        let n = name.lowercased(), id = bundleID.lowercased()
+        return n == id || n.hasPrefix(id + ".")
+    }
+
+    /// Same developer by reverse-DNS prefix: com.docker.vmnetd for com.docker.docker.
+    func sameVendor(_ name: String) -> Bool {
+        let vendor = bundleID.lowercased().split(separator: ".").prefix(2).joined(separator: ".") + "."
+        return name.lowercased().hasPrefix(vendor)
+    }
+
+    /// App groups the app declares in its code signature; their folders live in ~/Library/Group Containers.
+    var appGroups: [String] {
+        let (status, data) = run(["codesign", "-d", "--entitlements", "-", "--xml", url.path])
+        guard status == 0, let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else { return [] }
+        return plist["com.apple.security.application-groups"] as? [String] ?? []
+    }
+}
+
+/// Something outside ~/Library that belongs to the app. Needs admin rights, so we only report it.
+public struct SystemItem: Sendable {
+    public let path: String
+    public let why: String
+    public let command: String
 }
 
 /// Resolves a .app path, a bundle ID, or an app name. `exact` is false when nothing matched exactly and these
@@ -37,14 +63,10 @@ public func findApps(matching query: String, home: URL) -> (apps: [AppInfo], exa
     return exact.isEmpty ? (apps.filter { names($0).contains { $0.contains(q) } }, false) : (exact, true)
 }
 
-/// The app bundle plus everything in ~/Library that belongs to it.
-public func uninstallFindings(for app: AppInfo, _ c: Context) -> [Finding] {
-    let id = app.bundleID.lowercased()
-    // The app's own ID or a child of it (helpers, extensions): com.foo.app, com.foo.app.helper. Never com.foo.apple.
-    func owned(_ name: String) -> Bool {
-        let n = name.lowercased()
-        return n == id || n.hasPrefix(id + ".")
-    }
+/// The app bundle plus everything in ~/Library that belongs to it. `groups` defaults to the app's signed app groups.
+public func uninstallFindings(for app: AppInfo, _ c: Context, groups: [String]? = nil) -> [Finding] {
+    let groups = groups ?? app.appGroups
+    let owned = app.owns
     var out: [Finding] = []
     var seen = Set<String>()
     func add(_ url: URL, _ detail: String, _ confidence: Confidence) {
@@ -66,6 +88,14 @@ public func uninstallFindings(for app: AppInfo, _ c: Context) -> [Finding] {
     for dir in children(c.library.appending(path: "Containers")) where containerOwner(dir).map(owned) == true {
         add(dir, "Containers", .high)
     }
+    // Group folder names are exactly the group IDs. A group named after the app (TEAM.ru.keepcoder.Telegram) is its own;
+    // a developer-wide one (TEAM.dev.warp) may be shared with the developer's other apps.
+    for group in groups {
+        let dir = c.library.appending(path: "Group Containers/\(group)")
+        guard FileManager.default.fileExists(atPath: dir.path) else { continue }
+        let own = group.lowercased().contains(app.bundleID.lowercased())
+        add(dir, own ? "Group Containers" : "Group Containers, may be shared with this developer's other apps", own ? .high : .low)
+    }
     for url in children(c.library.appending(path: "LaunchAgents")) where url.pathExtension == "plist" {
         guard let plist = NSDictionary(contentsOf: url) else { continue }
         let label = plist["Label"] as? String ?? ""
@@ -83,6 +113,38 @@ public func uninstallFindings(for app: AppInfo, _ c: Context) -> [Finding] {
             let url = c.library.appending(path: "\(sub)/\(name)")
             if FileManager.default.fileExists(atPath: url.path) { add(url, "\(sub), matched by name only", .low) }
         }
+    }
+    return out
+}
+
+/// System-wide launch items, privileged helpers and installer receipts. `root` and `receipts` are injectable for tests;
+/// by default they're `/` and the output of `pkgutil --pkgs`.
+public func systemItems(for app: AppInfo, root: URL = URL(filePath: "/"), receipts: [String]? = nil) -> [SystemItem] {
+    let library = root.appending(path: "Library")
+    let helpers = library.appending(path: "PrivilegedHelperTools")
+    var out: [SystemItem] = []
+    func link(_ name: String) -> String? { app.owns(name) ? "linked to the app" : app.sameVendor(name) ? "same developer" : nil }
+
+    for sub in ["LaunchDaemons", "LaunchAgents"] {
+        for url in children(library.appending(path: sub)) where url.pathExtension == "plist" {
+            guard let plist = NSDictionary(contentsOf: url) else { continue }
+            let program = launchProgram(plist) ?? ""
+            let why = associatedApps(plist).contains(where: app.owns) || program.hasPrefix(app.url.path + "/")
+                ? "linked to the app" : link(plist["Label"] as? String ?? url.deletingPathExtension().lastPathComponent)
+            guard let why else { continue }
+            // A loaded daemon keeps running until it's booted out or the Mac restarts.
+            let domain = sub == "LaunchDaemons" ? "system" : "gui/$(id -u)"
+            out.append(SystemItem(path: url.path, why: why, command: "sudo launchctl bootout \(domain) '\(url.path)'; sudo mv '\(url.path)' ~/.Trash/"))
+        }
+    }
+    for url in children(helpers) {
+        guard let why = link(url.lastPathComponent) else { continue }
+        out.append(SystemItem(path: url.path, why: why, command: "sudo mv '\(url.path)' ~/.Trash/"))
+    }
+    let pkgs = receipts ?? String(decoding: run(["pkgutil", "--pkgs"]).1, as: UTF8.self).split(separator: "\n").map(String.init)
+    for pkg in pkgs {
+        guard let why = link(pkg) else { continue }
+        out.append(SystemItem(path: "installer receipt \(pkg)", why: why, command: "sudo pkgutil --forget \(pkg)"))
     }
     return out
 }
