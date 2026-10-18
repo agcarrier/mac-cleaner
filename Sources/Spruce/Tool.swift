@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The sidebar's tools, in order. Later phases add My Clutter and the rest.
+/// The sidebar's tools, in order. Later phases add the menu bar monitor and Cloud & Mail.
 enum Tool: String, CaseIterable, Identifiable {
-    case smartCare, cleanup, space, applications, performance, screenClean
+    case smartCare, cleanup, space, applications, performance, myClutter, screenClean
 
     var id: Self { self }
 
@@ -13,6 +13,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .space: "Space"
         case .applications: "Applications"
         case .performance: "Performance"
+        case .myClutter: "My Clutter"
         case .screenClean: "Screen Clean"
         }
     }
@@ -24,6 +25,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .space: "chart.pie.fill"
         case .applications: "square.grid.2x2.fill"
         case .performance: "gauge.with.dots.needle.67percent"
+        case .myClutter: "doc.on.doc.fill"
         case .screenClean: "keyboard"
         }
     }
@@ -35,6 +37,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .space: .indigo
         case .applications: .blue
         case .performance: .pink
+        case .myClutter: .teal
         case .screenClean: .gray
         }
     }
@@ -46,6 +49,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .space: "Package caches, old installers, idle projects, and your largest files."
         case .applications: "Remove an app and everything it leaves behind."
         case .performance: "What starts with your Mac, and a few maintenance tasks."
+        case .myClutter: "Duplicate files and similar photos in the folders you choose."
         case .screenClean: "Lock the keyboard and trackpad so you can wipe them and the screen."
         }
     }

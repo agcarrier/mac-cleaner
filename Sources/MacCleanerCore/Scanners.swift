@@ -3,6 +3,7 @@ import Foundation
 public enum Category: String, Sendable {
     case orphans, caches, agents, xcode, uninstall
     case devcaches, downloads, projects, large
+    case duplicates, similar
 
     /// What a plain scan covers.
     public static let scannable: [Category] = [.orphans, .caches, .agents, .xcode]
@@ -20,6 +21,8 @@ public enum Category: String, Sendable {
         case .downloads: "Old installers in Downloads"
         case .projects: "node_modules in idle projects"
         case .large: "Largest files (listed only, never cleaned)"
+        case .duplicates: "Duplicates"
+        case .similar: "Similar photos"
         }
     }
 }
@@ -39,6 +42,8 @@ public struct Finding: Sendable {
     public let size: Int64
     public let confidence: Confidence
     public let action: Action
+    /// Findings that belong together (copies of one file, similar photos) share this key. Nil for everything else.
+    public var group: String? = nil
 }
 
 extension Finding: Identifiable, Equatable {
@@ -113,7 +118,7 @@ func scanCategory(_ category: Category, _ c: Context) -> [Finding] {
     case .downloads: scanDownloads(c)
     case .projects: scanNodeModules(c)
     case .large: scanLargeFiles(c)
-    case .uninstall: []
+    case .uninstall, .duplicates, .similar: []
     }
 }
 

@@ -84,11 +84,27 @@ public final class ScanModel {
     private func finishScan(id: UUID, results: [Finding]) {
         // A cancelled or superseded scan's late results are dropped, so nothing stale can be cleaned.
         guard scanID == id, case .scanning = phase else { return }
-        var found = results.sorted { $0.size > $1.size }
+        var found = Self.ordered(results)
         if onlyPreselected { found = found.filter(\.isPreselected) }
         findings = found
         selection = Set(found.filter(\.isPreselected).map(\.id))
         phase = .review
+    }
+
+    /// Largest first. A group (copies of one file, similar photos) sorts by its total and stays together,
+    /// with its report-only (kept) row first.
+    static func ordered(_ findings: [Finding]) -> [Finding] {
+        let totals = Dictionary(findings.compactMap { f in f.group.map { ($0, f.size) } }, uniquingKeysWith: +)
+        func key(_ f: Finding) -> (Int64, String, Bool, Int64) {
+            (f.group.flatMap { totals[$0] } ?? f.size, f.group ?? f.id, f.isActionable, f.size)
+        }
+        return findings.sorted { a, b in
+            let (x, y) = (key(a), key(b))
+            if x.0 != y.0 { return x.0 > y.0 }
+            if x.1 != y.1 { return x.1 < y.1 }
+            if x.2 != y.2 { return !x.2 }
+            return x.3 > y.3
+        }
     }
 
     public func cancel() {

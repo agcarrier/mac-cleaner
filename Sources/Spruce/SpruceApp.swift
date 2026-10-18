@@ -26,6 +26,8 @@ final class AppState {
     let cleanup = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.scannable), thresholds: { currentThresholds() }))
     let space = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.space), thresholds: { currentThresholds() }))
     let diskMap = DiskMapModel()
+    let duplicates = ScanModel(scanner: liveClutterScanner(.duplicates, folders: { currentClutterFolders() }))
+    let similar = ScanModel(scanner: liveClutterScanner(.similar, folders: { currentClutterFolders() }))
     let screenCleaner = ScreenCleaner()
 }
 
@@ -34,6 +36,7 @@ struct RootView: View {
     @State private var tool: Tool? = .smartCare
     @AppStorage(SettingsKey.installerDays) private var installerDays = 30
     @AppStorage(SettingsKey.idleProjectDays) private var idleProjectDays = 60
+    @AppStorage(SettingsKey.clutterFolders) private var clutterFolders = ""
 
     var body: some View {
         NavigationSplitView {
@@ -52,6 +55,7 @@ struct RootView: View {
         // Results were judged by the old rules, so drop them rather than leave stale ✓ items selectable.
         .onChange(of: installerDays) { resetResults() }
         .onChange(of: idleProjectDays) { resetResults() }
+        .onChange(of: clutterFolders) { [state.duplicates, state.similar].forEach { $0.reset() } }
     }
 
     private func resetResults() {
@@ -65,6 +69,7 @@ struct RootView: View {
         case .space: SpaceView(model: state.space, diskMap: state.diskMap)
         case .applications: ApplicationsView()
         case .performance: PerformanceView()
+        case .myClutter: MyClutterView(duplicates: state.duplicates, similar: state.similar)
         case .screenClean: ScreenCleanView(cleaner: state.screenCleaner)
         }
     }

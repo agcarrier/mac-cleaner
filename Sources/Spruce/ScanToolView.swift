@@ -7,11 +7,14 @@ struct ScanToolView: View {
     let tool: Tool
     @Bindable var model: ScanModel
     var showsPermissionNote = false
+    /// Shown under the header, e.g. My Clutter's folder list.
+    var accessory: AnyView? = nil
     @State private var confirming = false
 
     var body: some View {
         VStack(spacing: 16) {
             ToolHeader(tool: tool)
+            accessory
             content
             if showsPermissionNote { PermissionNote() }
         }

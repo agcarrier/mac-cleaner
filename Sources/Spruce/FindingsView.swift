@@ -8,26 +8,35 @@ func bytes(_ n: Int64) -> String { ByteCountFormatter.string(fromByteCount: n, c
 struct FindingsView: View {
     @Bindable var model: ScanModel
 
-    private var groups: [(category: MacCleanerCore.Category, findings: [Finding])] {
-        var order: [MacCleanerCore.Category] = []
-        var byCategory: [MacCleanerCore.Category: [Finding]] = [:]
+    /// One section per category, except that grouped findings (copies of one file, similar photos) get a section per group.
+    private var sections: [(id: String, title: String, findings: [Finding])] {
+        var order: [String] = []
+        var byKey: [String: [Finding]] = [:]
         for finding in model.findings {
-            if byCategory[finding.category] == nil { order.append(finding.category) }
-            byCategory[finding.category, default: []].append(finding)
+            let key = finding.group ?? finding.category.rawValue
+            if byKey[key] == nil { order.append(key) }
+            byKey[key, default: []].append(finding)
         }
-        return order.map { ($0, byCategory[$0] ?? []) }
+        return order.map { key in
+            let items = byKey[key] ?? []
+            guard let first = items.first, first.group != nil else { return (key, items.first?.category.title ?? "", items) }
+            let title = first.category == .duplicates ? "\(first.title) \u{00B7} \(items.count) copies" : "\(items.count) similar photos"
+            return (key, title, items)
+        }
     }
 
     var body: some View {
         List {
-            ForEach(groups, id: \.category) { group in
+            ForEach(sections, id: \.id) { section in
                 Section {
-                    ForEach(group.findings) { FindingRow(finding: $0, model: model) }
+                    ForEach(section.findings) { FindingRow(finding: $0, model: model) }
                 } header: {
                     HStack {
-                        Text(group.category.title)
+                        Text(section.title).lineLimit(1)
                         Spacer()
-                        Text(bytes(group.findings.reduce(0) { $0 + $1.size })).monospacedDigit()
+                        // A group's kept copy isn't space you can get back, so only the others count.
+                        let counted = section.findings.first?.group == nil ? section.findings : section.findings.filter(\.isActionable)
+                        Text(bytes(counted.reduce(0) { $0 + $1.size })).monospacedDigit()
                     }
                 }
             }
@@ -47,6 +56,9 @@ private struct FindingRow: View {
                 Toggle("", isOn: Binding(get: { model.selection.contains(finding.id) }, set: { _ in model.toggle(finding.id) }))
                     .toggleStyle(.checkbox)
                     .labelsHidden()
+            } else if finding.group != nil {
+                Image(systemName: "checkmark.shield.fill").foregroundStyle(.green).frame(width: 14)
+                    .help("Kept. Spruce never selects this copy, so one always stays.")
             } else {
                 Image(systemName: "eye").foregroundStyle(.tertiary).frame(width: 14).help("Listed only. Spruce never cleans this.")
             }

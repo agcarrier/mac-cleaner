@@ -7,6 +7,17 @@ enum SettingsKey {
     static let idleProjectDays = "idleProjectDays"
     static let unlockCombo = "unlockCombo"
     static let screenCleanSeconds = "screenCleanSeconds"
+    static let clutterFolders = "clutterFolders"
+}
+
+/// My Clutter's folders, one path per line in UserDefaults. Default: Desktop, Documents, Downloads, Pictures.
+func currentClutterFolders() -> [URL] {
+    let stored = UserDefaults.standard.string(forKey: SettingsKey.clutterFolders) ?? ""
+    return stored.isEmpty ? defaultClutterFolders : stored.split(separator: "\n").map { URL(filePath: String($0)) }
+}
+
+let defaultClutterFolders = ["Desktop", "Documents", "Downloads", "Pictures"].map {
+    FileManager.default.homeDirectoryForCurrentUser.appending(path: $0)
 }
 
 /// The age rules as the user set them in Settings (defaults: 30 and 60 days).

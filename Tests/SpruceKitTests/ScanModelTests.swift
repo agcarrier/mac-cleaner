@@ -175,3 +175,16 @@ private func waitWhileScanning(_ m: ScanModel) async {
     m.refreshBlock()
     #expect(m.blockedReason == nil)
 }
+
+/// Copies of one file stay together, kept copy first, and groups are ordered by their total size.
+@Test @MainActor func groupsStayTogether() async {
+    func dupe(_ name: String, _ size: Int64, _ group: String, kept: Bool = false) -> Finding {
+        Finding(category: .duplicates, title: name, detail: group, size: size, confidence: .high,
+                action: kept ? .report : .trash([URL(filePath: "/tmp/\(name)")]), group: group)
+    }
+    let small = [dupe("s-kept", 50, "s", kept: true), dupe("s1", 50, "s"), dupe("s2", 50, "s")]   // 150 total
+    let big = [dupe("b-kept", 100, "b", kept: true), dupe("b1", 100, "b")]                        // 200 total
+    let m = model([small[1], big[1], high, small[0], big[0], small[2]])
+    m.scan(); await waitWhileScanning(m)
+    #expect(m.findings.map(\.title) == ["high", "b-kept", "b1", "s-kept", "s1", "s2"])
+}

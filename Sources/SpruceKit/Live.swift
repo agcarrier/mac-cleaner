@@ -27,3 +27,14 @@ public func isRunning(_ app: AppInfo) -> Bool {
 func runningBundleIDs() -> Set<String> {
     Set(NSWorkspace.shared.runningApplications.compactMap { $0.bundleIdentifier?.lowercased() })
 }
+
+/// Duplicates or similar photos in `folders` (read when the scan starts), on a background task. Cancelling stops it.
+public func liveClutterScanner(_ category: MacCleanerCore.Category, folders: @escaping @Sendable () -> [URL]) -> Scanner {
+    { progress in
+        let task = Task.detached(priority: .userInitiated) {
+            progress(category)
+            return category == .similar ? findSimilarPhotos(in: folders()) : findDuplicates(in: folders())
+        }
+        return await withTaskCancellationHandler { await task.value } onCancel: { task.cancel() }
+    }
+}
