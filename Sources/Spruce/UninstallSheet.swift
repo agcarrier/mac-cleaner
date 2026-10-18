@@ -8,7 +8,6 @@ struct UninstallSheet: View {
     let app: AppInfo
     @State private var model: ScanModel
     @State private var system: [SystemItem] = []
-    @State private var running = false
     @State private var confirming = false
     @Environment(\.dismiss) private var dismiss
 
@@ -16,7 +15,7 @@ struct UninstallSheet: View {
         self.app = app
         _model = State(initialValue: ScanModel(
             scanner: { _ in uninstallFindings(for: app, liveContext(thresholds: currentThresholds(), includeInstalled: false)) },
-            preflight: { isRunning(app) ? "Quit \(app.name) first." : nil }))
+            preflight: { isRunning(app) ? "Quit \(app.name) to uninstall it." : nil }))
     }
 
     var body: some View {
@@ -33,8 +32,10 @@ struct UninstallSheet: View {
         .padding(20)
         .frame(width: 620, height: 560)
         .sheet(isPresented: $confirming) { ConfirmCleanSheet(model: model) }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { _ in model.refreshBlock() }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification)) { _ in model.refreshBlock() }
         .task {
-            running = isRunning(app)
+            model.refreshBlock()
             model.scan()
             let app = self.app
             system = await Task.detached { systemItems(for: app) }.value
@@ -54,13 +55,11 @@ struct UninstallSheet: View {
             PermissionNote()
             HStack {
                 Text("\(model.selectedFindings.count) selected · \(bytes(model.selectedBytes))").monospacedDigit().foregroundStyle(.secondary)
-                if running || model.blockedReason != nil {
-                    Text(model.blockedReason ?? "Quit \(app.name) to uninstall it.").foregroundStyle(.orange)
-                }
+                if let reason = model.blockedReason { Text(reason).foregroundStyle(.orange) }
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 PillButton("Uninstall") { confirming = true }
-                    .disabled(running || model.selectedFindings.isEmpty)
+                    .disabled(model.blockedReason != nil || model.selectedFindings.isEmpty)
             }
         case .cleaning:
             Spacer()

@@ -54,8 +54,12 @@ extension Finding: Identifiable, Equatable {
     /// Report-only findings are never acted on.
     public var isActionable: Bool { if case .report = action { false } else { true } }
 
-    /// The ✓ rule shared by the CLI and the app: only actionable, high-confidence findings start selected.
-    public var isPreselected: Bool { isActionable && confidence == .high }
+    /// True for actions that can't go to the Trash (simctl deletes): they can't be undone.
+    public var isPermanent: Bool { if case .run = action { true } else { false } }
+
+    /// The ✓ rule shared by the CLI and the app: only high-confidence findings that go to the Trash start selected.
+    /// Permanent actions are never preselected; the user has to choose them.
+    public var isPreselected: Bool { isActionable && !isPermanent && confidence == .high }
 
     public static func == (a: Finding, b: Finding) -> Bool { a.id == b.id }
 }
@@ -272,7 +276,7 @@ func scanXcode(_ c: Context) -> [Finding] {
     let sims = unavailableSimulators()
     if !sims.isEmpty {
         let size = sims.reduce(0) { $0 + allocatedSize(dev.appending(path: "CoreSimulator/Devices/\($1)")) }
-        out.append(Finding(category: .xcode, title: "\(sims.count) unavailable simulators", detail: "their runtime is no longer installed",
+        out.append(Finding(category: .xcode, title: "\(sims.count) unavailable simulators", detail: "their runtime is no longer installed; deleted permanently by simctl, not moved to the Trash",
                            size: size, confidence: xcodeOpen ? .low : .high, action: .run(["xcrun", "simctl", "delete", "unavailable"])))
     }
     return out

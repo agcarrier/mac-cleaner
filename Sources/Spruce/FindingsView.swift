@@ -50,14 +50,25 @@ private struct FindingRow: View {
             } else {
                 Image(systemName: "eye").foregroundStyle(.tertiary).frame(width: 14).help("Listed only. Spruce never cleans this.")
             }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(finding.title).lineLimit(1)
-                Text(finding.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+            // Clicking the text toggles too. The gesture sits beside the checkbox, never around it,
+            // so one click can't reach both and cancel itself out.
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(finding.title).lineLimit(1)
+                        if finding.isPermanent {
+                            Text("Permanent").font(.caption2.bold()).foregroundStyle(.red)
+                                .padding(.horizontal, 5).padding(.vertical, 1)
+                                .background(.red.opacity(0.12), in: Capsule())
+                        }
+                    }
+                    Text(finding.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                }
+                Spacer()
+                Text(bytes(finding.size)).monospacedDigit().foregroundStyle(.secondary)
             }
-            Spacer()
-            Text(bytes(finding.size)).monospacedDigit().foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+            .onTapGesture { model.toggle(finding.id) }
         }
-        .contentShape(Rectangle())
-        .onTapGesture { model.toggle(finding.id) }
     }
 }

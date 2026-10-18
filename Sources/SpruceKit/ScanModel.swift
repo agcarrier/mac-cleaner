@@ -4,7 +4,8 @@ import MacCleanerCore
 
 /// Produces findings, reporting each category as it starts. Runs off the main actor.
 public typealias Scanner = @Sendable (_ progress: @escaping @Sendable (MacCleanerCore.Category) -> Void) async -> [Finding]
-/// Acts on one finding's action. The live one is `perform`, which only ever moves things to the Trash.
+/// Acts on one finding's action. The live one is `perform`: files go to the Trash; `.run` findings
+/// (simctl deletes, flagged `isPermanent`) can't be undone and are never preselected.
 public typealias Performer = @Sendable (Action) throws -> Void
 
 public struct CleanFailure: Equatable, Sendable {
@@ -99,6 +100,24 @@ public final class ScanModel {
         selection = []
     }
 
+    /// Drops results (for example after Settings change the rules they were judged by), back to the start screen.
+    public func reset() {
+        switch phase {
+        case .scanning: cancel()
+        case .review, .done:
+            phase = .idle
+            findings = []
+            selection = []
+            blockedReason = nil
+        case .idle, .cleaning: break
+        }
+    }
+
+    /// Re-asks the preflight check (for example when an app quits or launches) so the UI can enable or block cleaning.
+    public func refreshBlock() {
+        blockedReason = preflight()
+    }
+
     public func toggle(_ id: Finding.ID) {
         guard phase == .review, findings.contains(where: { $0.id == id && $0.isActionable }) else { return }
         if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
@@ -113,10 +132,18 @@ public final class ScanModel {
         }
         blockedReason = nil
         phase = .cleaning
+        // Things can change while results sit in review: an app launches (its cache is now in use), a file moves.
+        // Re-run the same rules and act only on items still found with the same confidence.
+        let fresh = Dictionary(await scanner { _ in }.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let changed = items.filter { fresh[$0.id]?.confidence != $0.confidence }
+        let current = items.filter { fresh[$0.id]?.confidence == $0.confidence }
         let performer = self.performer
         let summary = await Task.detached(priority: .userInitiated) {
-            var cleaned = 0, bytes: Int64 = 0, failures: [CleanFailure] = []
-            for finding in items {
+            var cleaned = 0, bytes: Int64 = 0
+            var failures = changed.map {
+                CleanFailure(finding: $0, message: "This changed since the scan, so it was skipped. Scan again to review it.")
+            }
+            for finding in current {
                 do {
                     try performer(finding.action)
                     cleaned += 1

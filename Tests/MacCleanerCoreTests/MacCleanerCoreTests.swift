@@ -201,3 +201,14 @@ import Testing
     // Finder-style order: locale-aware and case-insensitive.
     #expect(zip(apps, apps.dropFirst()).allSatisfy { $0.name.localizedCaseInsensitiveCompare($1.name) != .orderedDescending })
 }
+
+/// Review finding 2: actions that can't go to the Trash (simctl deletes) are never preselected, and say so.
+@Test func permanentActionsAreNeverPreselected() {
+    let sims = Finding(category: .xcode, title: "2 unavailable simulators", detail: "", size: 1, confidence: .high,
+                       action: .run(["xcrun", "simctl", "delete", "unavailable"]))
+    #expect(sims.isActionable)
+    #expect(sims.isPermanent)
+    #expect(!sims.isPreselected)
+    let trash = Finding(category: .caches, title: "a", detail: "", size: 1, confidence: .high, action: .trash([URL(filePath: "/tmp/a")]))
+    #expect(!trash.isPermanent && trash.isPreselected)
+}

@@ -49,7 +49,7 @@ struct ScanToolView: View {
             }
         case .cleaning:
             Spacer()
-            ProgressView("Moving to the Trash…")
+            ProgressView("Checking nothing changed, then moving to the Trash…")
             Spacer()
         case .done(let summary):
             Spacer()
@@ -93,8 +93,11 @@ struct ConfirmCleanSheet: View {
                 }
             }
             .frame(minHeight: 160, maxHeight: 320)
-            Text("Total: \(bytes(model.selectedBytes)). Nothing is deleted until you empty the Trash.")
-                .font(.callout).foregroundStyle(.secondary)
+            let permanent = items.filter(\.isPermanent).count
+            Text(permanent == 0
+                 ? "Total: \(bytes(model.selectedBytes)). Nothing is deleted until you empty the Trash."
+                 : "Total: \(bytes(model.selectedBytes)). \(permanent) item\(permanent == 1 ? " is" : "s are") deleted permanently and can't be recovered. Everything else goes to the Trash.")
+                .font(.callout).foregroundStyle(permanent == 0 ? Color.secondary : Color.red)
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)

@@ -131,3 +131,47 @@ private func waitWhileScanning(_ m: ScanModel) async {
     await m.clean()
     #expect(recorder.performed == ["/tmp/low"])
 }
+
+/// Review finding 1: the world can change between scan and clean (an app launches, a cache moves).
+/// Clean re-scans and only acts on items still found with the same confidence; the rest are reported, not touched.
+@Test @MainActor func cleanSkipsItemsThatChangedSinceTheScan() async {
+    let recorder = Recorder()
+    final class Calls: @unchecked Sendable { var count = 0 }
+    let calls = Calls()
+    let downgraded = Finding(category: .caches, title: "high", detail: "", size: 300, confidence: .low, action: .trash([URL(filePath: "/tmp/high")]))
+    let m = ScanModel(scanner: { _ in
+        calls.count += 1
+        // First scan: both present. Re-check: `low` is gone and `high` is now only low confidence (its app opened).
+        return calls.count == 1 ? [high, low] : [downgraded]
+    }, performer: { recorder.record($0) })
+    m.scan(); await waitWhileScanning(m)
+    m.toggle(low.id)
+    await m.clean()
+    guard case .done(let summary) = m.phase else { Issue.record("expected done, got \(m.phase)"); return }
+    #expect(recorder.performed.isEmpty)
+    #expect(summary.cleaned == 0)
+    #expect(Set(summary.failures.map(\.finding.id)) == [high.id, low.id])
+    #expect(summary.failures.allSatisfy { $0.message.contains("changed since the scan") })
+}
+
+/// Review finding 3: changing a threshold in Settings must not leave stale results selectable.
+@Test @MainActor func resetClearsResults() async {
+    let m = model([high, low])
+    m.scan(); await waitWhileScanning(m)
+    m.reset()
+    #expect(m.phase == .idle)
+    #expect(m.findings.isEmpty && m.selection.isEmpty)
+}
+
+/// Review finding 4: the uninstall block must follow the app as it quits or launches, not freeze at sheet open.
+@Test @MainActor func refreshBlockFollowsPreflight() async {
+    final class Flag: @unchecked Sendable { var running = true }
+    let flag = Flag()
+    let m = model([high], preflight: { flag.running ? "Quit Foo first." : nil })
+    m.scan(); await waitWhileScanning(m)
+    m.refreshBlock()
+    #expect(m.blockedReason == "Quit Foo first.")
+    flag.running = false
+    m.refreshBlock()
+    #expect(m.blockedReason == nil)
+}

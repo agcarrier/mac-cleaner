@@ -30,6 +30,8 @@ final class AppState {
 struct RootView: View {
     let state: AppState
     @State private var tool: Tool? = .smartCare
+    @AppStorage(SettingsKey.installerDays) private var installerDays = 30
+    @AppStorage(SettingsKey.idleProjectDays) private var idleProjectDays = 60
 
     var body: some View {
         NavigationSplitView {
@@ -45,6 +47,13 @@ struct RootView: View {
                 .navigationTitle(current.title)
         }
         .frame(minWidth: 760, minHeight: 520)
+        // Results were judged by the old rules, so drop them rather than leave stale ✓ items selectable.
+        .onChange(of: installerDays) { resetResults() }
+        .onChange(of: idleProjectDays) { resetResults() }
+    }
+
+    private func resetResults() {
+        [state.smartCare, state.cleanup, state.space].forEach { $0.reset() }
     }
 
     @ViewBuilder private func detail(for tool: Tool) -> some View {
