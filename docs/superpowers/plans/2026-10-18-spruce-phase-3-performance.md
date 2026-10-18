@@ -81,14 +81,14 @@ Phase 1's constraints stand (scratch path, macOS 14, no dependencies, no nagging
 
 - [x] `swift test --scratch-path ~/Library/Caches/MacCleaner/spm`: all green.
 - [x] `tools/bundle-spruce.sh --install`.
-- [ ] **Andrew checks on his Mac** (an agent can't type his admin password or judge what he wants running):
+- [x] **Andrew checks on his Mac** (passed 2026-10-18: listing matches System Settings, steamclean off/on round-trips, Open With rebuild and DNS flush both Done, cancel is silent) (an agent can't type his admin password or judge what he wants running):
   1. Open Spruce → Performance. "Open at login" matches System Settings → General → Login Items.
   2. Under "Your launch agents", switch `com.valvesoftware.steamclean` off: it reads "Off". Run
      `launchctl print-disabled gui/$(id -u) | grep steamclean` → `disabled`/`true`; the plist is still in `~/Library/LaunchAgents`.
   3. Switch it back on: status returns to Loaded/Not loaded, and the same command shows `enabled`/`false`.
   4. Maintenance → Rebuild the “Open With” menu → Run: “Done” after a few seconds (no password).
   5. Maintenance → Flush DNS cache → macOS asks for the password; cancel once (nothing happens), then run it for real: "Done".
-- [ ] Commit on `spruce-phase-3-performance`; update the vault page and run `~/.claude/brain/brain sync`.
+- [x] Commit on `spruce-phase-3-performance`; update the vault page and run `~/.claude/brain/brain sync`.
 
 ## Known limits
 
