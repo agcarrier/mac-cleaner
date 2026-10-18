@@ -29,3 +29,14 @@ Sandboxed apps keep their data in `~/Library/Containers` and `~/Library/Group Co
 Full Disk Access. Without it, those checks are skipped with a warning. Grant it to whatever runs the command: your terminal app,
 or for Claude Code in the Claude desktop app, the `claude.app` inside `~/Library/Application Support/Claude/claude-code/<version>/`
 (Claude.app itself doesn't pass it on, and a Claude Code update means granting it again).
+
+## Spruce, the Mac app
+
+```bash
+tools/bundle-spruce.sh --install
+```
+
+Builds `Spruce.app` (outside this iCloud folder), signs it with your Apple Development certificate when you have one, and
+copies it to `/Applications`. Then grant Spruce Full Disk Access in System Settings → Privacy & Security, and reopen it.
+The stable signature keeps that permission across rebuilds. The icon is `art/Spruce.icns`; regenerate it from a source
+image with `swift tools/make-icon.swift <image.png>` and the `sips`/`iconutil` steps in that script's header.
