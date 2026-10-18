@@ -129,6 +129,19 @@ Not from the teardown; this covers where a developer Mac's space actually goes.
 - **Files over 1 GB** outside Library folders: listed only (`·`), never cleaned.
 - Regular-scan noise fix: Apple frameworks that cache under plain names (CloudKit, GeoServices, PassKit, …) are skipped.
 
+### Performance rules (Spruce, built 2026-10-18)
+
+- **Listing:** plists in `~/Library/LaunchAgents`, `/Library/LaunchAgents` and `/Library/LaunchDaemons`, plus `sfltool dumpbtm`
+  (Background Task Management, the list System Settings → Login Items shows; it works without admin for the user's own records).
+  From BTM: `app` items that are `enabled` = open at login; `login item` and `agent` = apps' own helpers; `allowed` = the user's
+  System Settings switch. `legacy agent` records are skipped there because the plists are read directly.
+- **Switching:** only `~/Library/LaunchAgents` items with a `Label`, never `com.apple.*`. Off = `launchctl disable gui/<uid>/<label>`
+  then `bootout`; on = `launchctl enable` then `bootstrap gui/<uid> <plist>`. The plist never moves. Everything else links to
+  System Settings → Login Items.
+- **Maintenance:** flush DNS (`dscacheutil -flushcache; killall -HUP mDNSResponder`) and rebuild Spotlight (`mdutil -E /`) run
+  through `osascript … with administrator privileges`, only on click. Rebuild Launch Services (`lsregister -gc -r -f -apps local,system,user`,
+  never `-delete`) and reset Quick Look thumbnails (`qlmanage -r cache`) need no admin.
+
 ## Other scanners
 
 - **Trash:** user trash, mounted volumes' `.Trashes`, Mail trash.

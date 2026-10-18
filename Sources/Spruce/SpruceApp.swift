@@ -63,6 +63,7 @@ struct RootView: View {
         case .cleanup: ScanToolView(tool: tool, model: state.cleanup, showsPermissionNote: true)
         case .space: ScanToolView(tool: tool, model: state.space)
         case .applications: ApplicationsView()
+        case .performance: PerformanceView()
         case .screenClean: ScreenCleanView(cleaner: state.screenCleaner)
         }
     }
