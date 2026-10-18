@@ -79,14 +79,14 @@ Modify `Scanners.swift`: `Category` gains `.duplicates` and `.similar`; `Finding
 
 - [x] `swift test --scratch-path ~/Library/Caches/MacCleaner/spm`: all green.
 - [x] `tools/bundle-spruce.sh --install`.
-- [ ] **Andrew checks on his Mac:**
+- [x] **Andrew checks on his Mac** (passed 2026-10-18; step 3 first failed, fixed by the Trash fallback below, then passed):
   1. Make a test folder: `mkdir -p ~/Desktop/dupetest && cp ~/Downloads/<some file over 100 KB> ~/Desktop/dupetest/a && cp ~/Desktop/dupetest/a ~/Desktop/dupetest/b`.
   2. My Clutter → Duplicates → Scan. The dupetest group shows one "Kept" row (green shield) and one checked copy. Groups
      spread across project folders (e.g. the site-kit stock files) show their copies unchecked.
   3. Clean → confirm → the copy is in the Trash, the kept file is still there.
   4. Similar Photos → Scan. Groups look like real near-duplicates; nothing is checked.
   5. Remove Documents from the folder list, then Reset: results clear each time.
-- [ ] Commit on `spruce-phase-5-my-clutter`; update the vault page and run `~/.claude/brain/brain sync`.
+- [x] Commit on `spruce-phase-5-my-clutter`; update the vault page and run `~/.claude/brain/brain sync`.
 
 ## Found in the hands-on check
 
