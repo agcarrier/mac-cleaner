@@ -25,6 +25,7 @@ final class AppState {
                               scanner: liveScanner(Set(MacCleanerCore.Category.scannable).union([.devcaches, .downloads]), thresholds: { currentThresholds() }))
     let cleanup = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.scannable), thresholds: { currentThresholds() }))
     let space = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.space), thresholds: { currentThresholds() }))
+    let screenCleaner = ScreenCleaner()
 }
 
 struct RootView: View {
@@ -62,6 +63,7 @@ struct RootView: View {
         case .cleanup: ScanToolView(tool: tool, model: state.cleanup, showsPermissionNote: true)
         case .space: ScanToolView(tool: tool, model: state.space)
         case .applications: ApplicationsView()
+        case .screenClean: ScreenCleanView(cleaner: state.screenCleaner)
         }
     }
 }
