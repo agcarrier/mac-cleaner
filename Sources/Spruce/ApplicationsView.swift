@@ -9,6 +9,30 @@ struct AppItem: Identifiable, Hashable {
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
+/// Applications: the installed list (uninstall), or updates. The switch sits in the toolbar like Space's.
+struct ApplicationsTool: View {
+    private enum Mode: String, CaseIterable { case installed = "Installed", updates = "Updates" }
+    let updates: UpdatesModel
+    @State private var mode = Mode.installed
+
+    var body: some View {
+        Group {
+            switch mode {
+            case .installed: ApplicationsView()
+            case .updates: UpdatesView(model: updates)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("View", selection: $mode) {
+                    ForEach(Mode.allCases, id: \.self) { Text($0.rawValue) }
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+    }
+}
+
 struct ApplicationsView: View {
     @State private var apps: [AppItem] = []
     @State private var query = ""
