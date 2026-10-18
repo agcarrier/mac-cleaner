@@ -80,13 +80,13 @@ The tree function is injected for tests.
 
 - [x] `swift test --scratch-path ~/Library/Caches/MacCleaner/spm`: all green.
 - [x] `tools/bundle-spruce.sh --install`.
-- [ ] **Andrew checks on his Mac:**
+- [x] **Andrew checks on his Mac** (passed 2026-10-18, all five steps):
   1. Spruce → Space → Disk Map → Map Home Folder. The count climbs, the window stays usable (switch tools and back), and the map appears.
   2. The biggest tiles make sense (compare with `du -sh ~/* ~/.[a-z]* | sort -h | tail`).
   3. Click into a folder, then two more levels; the breadcrumb takes you back.
   4. Right-click a tile → Reveal in Finder.
   5. New Map → Choose Folder… → pick a small folder; Cancel a home-folder scan midway and confirm it returns to the start.
-- [ ] Commit on `spruce-phase-4-disk-map`; update the vault page and run `~/.claude/brain/brain sync`.
+- [x] Commit on `spruce-phase-4-disk-map`; update the vault page and run `~/.claude/brain/brain sync`.
 
 ## Known limits
 
