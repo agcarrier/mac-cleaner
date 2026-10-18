@@ -142,6 +142,16 @@ Not from the teardown; this covers where a developer Mac's space actually goes.
   through `osascript … with administrator privileges`, only on click. Rebuild Launch Services (`lsregister -gc -r -f -apps local,system,user`,
   never `-delete`) and reset Quick Look thumbnails (`qlmanage -r cache`) need no admin.
 
+### My Clutter rules (Spruce, built 2026-10-18)
+
+- **Walk:** chosen folders (default Desktop, Documents, Downloads, Pictures), each file once. Skips hidden items, packages,
+  `Library`, `node_modules`, anything inside a git repository, symlinks, extra hard links, and dataless iCloud files (never downloaded).
+- **Duplicates:** files of 100 KB or more with the same size, then the same first 64 KB, then the same full SHA-256. The kept copy
+  (not in Downloads, then oldest, then shortest path) is report-only. Copies in Downloads or beside the kept file are ✓; copies
+  in other folders are ○ (projects and app data keep copies on purpose).
+- **Similar photos:** Vision feature prints, compared within a folder; a photo joins a group if its distance to the group's first
+  photo is under 0.45. Always ○.
+
 ## Other scanners
 
 - **Trash:** user trash, mounted volumes' `.Trashes`, Mail trash.
