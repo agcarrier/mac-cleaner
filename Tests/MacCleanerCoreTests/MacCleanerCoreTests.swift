@@ -212,3 +212,28 @@ import Testing
     let trash = Finding(category: .caches, title: "a", detail: "", size: 1, confidence: .high, action: .trash([URL(filePath: "/tmp/a")]))
     #expect(!trash.isPermanent && trash.isPreselected)
 }
+
+/// trashItem refuses some files with "no permission" (files another app created carry com.apple.provenance; seen
+/// 2026-10-18 on files made in Claude's terminal) even though moving them works. Then they're moved into ~/.Trash directly.
+@Test func trashFallsBackToMovingIntoTrash() throws {
+    let home = FileManager.default.temporaryDirectory.appending(path: "mac-cleaner-trash-\(UUID())")
+    defer { try? FileManager.default.removeItem(at: home) }
+    try FileManager.default.createDirectory(at: home.appending(path: ".Trash"), withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: home.appending(path: "Desktop"), withIntermediateDirectories: true)
+    let refuse: (URL) throws -> Void = { _ in throw CocoaError(.fileWriteNoPermission) }
+
+    for _ in 0..<2 {
+        let file = home.appending(path: "Desktop/b.bin")
+        try Data("x".utf8).write(to: file)
+        try trash(file, home: home, trashItem: refuse)
+        #expect(!FileManager.default.fileExists(atPath: file.path))
+    }
+    let inTrash = try FileManager.default.contentsOfDirectory(atPath: home.appending(path: ".Trash").path).sorted()
+    #expect(inTrash == ["b 2.bin", "b.bin"])
+
+    // Any other failure is reported, and the file stays where it was.
+    let kept = home.appending(path: "Desktop/c.bin")
+    try Data("x".utf8).write(to: kept)
+    #expect(throws: CocoaError.self) { try trash(kept, home: home, trashItem: { _ in throw CocoaError(.fileReadUnknown) }) }
+    #expect(FileManager.default.fileExists(atPath: kept.path))
+}

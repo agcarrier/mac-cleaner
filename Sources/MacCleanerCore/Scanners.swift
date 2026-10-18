@@ -125,12 +125,35 @@ func scanCategory(_ category: Category, _ c: Context) -> [Finding] {
 public func perform(_ action: Action) throws {
     switch action {
     case .trash(let urls):
-        for url in urls { try FileManager.default.trashItem(at: url, resultingItemURL: nil) }
+        for url in urls { try trash(url) }
     case .run(let args):
         let (status, _) = run(args)
         if status != 0 { throw CocoaError(.executableLoad, userInfo: [NSLocalizedDescriptionKey: "\(args.joined(separator: " ")) exited \(status)"]) }
     case .report:
         break
+    }
+}
+
+/// Moves `url` to the Trash. `trashItem` refuses some files with "no permission" even though moving them works (files another
+/// app created carry `com.apple.provenance`; seen 2026-10-18 on files made in Claude's terminal). Then the file is moved into
+/// `~/.Trash` directly, with a free name like Finder's, as long as it's on the same volume. Finder's "Put Back" won't know where
+/// such a file came from. Any other failure is thrown and the file stays put.
+func trash(_ url: URL, home: URL = FileManager.default.homeDirectoryForCurrentUser,
+           trashItem: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }) throws {
+    do {
+        try trashItem(url)
+    } catch let error as CocoaError where error.code == .fileWriteNoPermission {
+        let bin = home.appending(path: ".Trash")
+        let volume = { (u: URL) in try? u.resourceValues(forKeys: [.volumeURLKey]).volume }
+        guard let here = volume(url.deletingLastPathComponent()), here == volume(bin) else { throw error }
+        let base = url.deletingPathExtension().lastPathComponent, ext = url.pathExtension
+        var target = bin.appending(path: url.lastPathComponent)
+        var n = 2
+        while FileManager.default.fileExists(atPath: target.path) {
+            target = bin.appending(path: ext.isEmpty ? "\(base) \(n)" : "\(base) \(n).\(ext)")
+            n += 1
+        }
+        try FileManager.default.moveItem(at: url, to: target)
     }
 }
 

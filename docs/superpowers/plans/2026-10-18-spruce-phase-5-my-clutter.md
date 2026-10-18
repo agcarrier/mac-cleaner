@@ -88,6 +88,14 @@ Modify `Scanners.swift`: `Category` gains `.duplicates` and `.similar`; `Finding
   5. Remove Documents from the folder list, then Reset: results clear each time.
 - [ ] Commit on `spruce-phase-5-my-clutter`; update the vault page and run `~/.claude/brain/brain sync`.
 
+## Found in the hands-on check
+
+Cleaning `b.bin` failed with "you don't have permission to access it". `FileManager.trashItem` refuses files another app created
+(they carry `com.apple.provenance`; here, files made in Claude's terminal pane), while a plain move into `~/.Trash` works.
+`perform` now falls back to that move, on the same volume only, with a free name ("b 2.bin"). It covers every clean, not just
+My Clutter. Pinned by `trashFallsBackToMovingIntoTrash`; proven on a real terminal-made file. Finder's "Put Back" doesn't know
+where such a file came from.
+
 ## Known limits
 
 - Similar photos compares within each folder only; near-duplicates split across folders aren't grouped.
