@@ -92,9 +92,9 @@ Phase 1's constraints stand (scratch path, macOS 14, no dependencies, no nagging
 
 ### Task 4: Build, bundle, hand-off
 
-- [ ] `swift test --scratch-path ~/Library/Caches/MacCleaner/spm`: all green.
-- [ ] `tools/bundle-spruce.sh --install`.
-- [ ] **Andrew checks on his Mac** (an agent can't grant Accessibility or press real keys for him):
+- [x] `swift test --scratch-path ~/Library/Caches/MacCleaner/spm`: all green.
+- [x] `tools/bundle-spruce.sh --install`.
+- [x] **Andrew checks on his Mac** (passed 2026-10-18: combo and auto-unlock both work) (an agent can't grant Accessibility or press real keys for him):
   1. Open Spruce → Screen Clean → Allow Accessibility…, switch Spruce on in System Settings, come back.
   2. Start Screen Clean. Typing, clicking, scrolling and swipes do nothing; the countdown runs.
   3. Press ⌃⌥⌘U: it unlocks at once.
