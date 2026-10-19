@@ -16,7 +16,7 @@ first. The `Spruce` target adds a SwiftUI `MenuBarExtra` whose `isInserted` foll
 
 ## Calls made (builder's)
 
-- **What the menu bar shows:** a gauge symbol and CPU percent. Memory and disk go in the panel, so the item stays narrow.
+- **What the menu bar shows:** the app icon's spruce (a drawn template image, since SF Symbols has no conifer) and CPU percent. Memory and disk go in the panel, so the item stays narrow.
 - **Memory used** = app memory (internal − purgeable pages) + wired + compressed, the same parts Activity Monitor adds up.
 - **Disk free** = the startup volume's "available for important usage" (what Finder shows, purgeable space included).
 - **Sampling:** CPU and memory every 3 s, disk every 30 s, and only while the item is in the menu bar. Off means no timer at all.
@@ -53,13 +53,13 @@ first. The `Spruce` target adds a SwiftUI `MenuBarExtra` whose `isInserted` foll
 
 - [x] `swift test --scratch-path ~/Library/Caches/MacCleaner/spm`: all green.
 - [x] `tools/bundle-spruce.sh --install`.
-- [ ] **Andrew checks on his Mac:**
+- [x] **Andrew checks on his Mac** (passed 2026-10-19; he then asked for the app icon's tree instead of the gauge):
   1. Spruce has nothing in the menu bar at first.
   2. Settings (⌘,) → Menu bar → switch on: the gauge and CPU % appear; click it for CPU, memory and disk.
   3. Compare with Activity Monitor (CPU and Memory tabs) and Finder's free space: close enough.
   4. Activity Monitor → Spruce's own CPU stays around 0–1 % with only the menu bar item open.
   5. Switch it off: the item disappears.
-- [ ] Commit on `spruce-phase-7-menu-bar`; update the vault page and run `~/.claude/brain/brain sync`.
+- [x] Commit on `spruce-phase-7-menu-bar`; update the vault page and run `~/.claude/brain/brain sync`.
 
 ## Known limits
 
