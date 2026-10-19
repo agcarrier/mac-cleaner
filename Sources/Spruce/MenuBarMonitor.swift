@@ -66,10 +66,23 @@ struct MonitorLabel: View {
     let monitor: SystemMonitor
 
     var body: some View {
-        Text("\(Image(nsImage: spruceIcon).renderingMode(.template)) \(monitor.cpu.map(percent) ?? "\u{2013}")")
-            .monospacedDigit()
+        Image(nsImage: labelImage(cpu: monitor.cpu))
             .task { await monitor.run() }
     }
+}
+
+/// The tree and the CPU figure drawn into one template image. The menu bar drops a custom image placed inside Text (only
+/// SF Symbols survive there), so the whole label is an image, redrawn on each sample.
+@MainActor private func labelImage(cpu: Double?) -> NSImage {
+    let renderer = ImageRenderer(content: HStack(spacing: 3) {
+        Image(nsImage: spruceIcon)
+        Text(cpu.map(percent) ?? "\u{2013}").font(.system(size: 12, weight: .medium)).monospacedDigit()
+    }
+    .foregroundStyle(.black))
+    renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+    let image = renderer.nsImage ?? spruceIcon
+    image.isTemplate = true
+    return image
 }
 
 struct MonitorPanel: View {
