@@ -16,10 +16,12 @@ first. The `Spruce` target adds a SwiftUI `MenuBarExtra` whose `isInserted` foll
 
 ## Calls made (builder's)
 
-- **What the menu bar shows:** the app icon's spruce (a drawn template image, since SF Symbols has no conifer) and CPU percent. Memory and disk go in the panel, so the item stays narrow.
+- **What the menu bar shows:** only the app icon's spruce (a drawn template image, since SF Symbols has no conifer). Andrew
+  didn't want the CPU figure in the bar (2026-10-19); the numbers live in the panel. A drawn image inside `Text` is dropped
+  by the menu bar, so the label is a plain `Image(nsImage:)`. Memory and disk go in the panel, so the item stays narrow.
 - **Memory used** = app memory (internal − purgeable pages) + wired + compressed, the same parts Activity Monitor adds up.
 - **Disk free** = the startup volume's "available for important usage" (what Finder shows, purgeable space included).
-- **Sampling:** CPU and memory every 3 s, disk every 30 s, and only while the item is in the menu bar. Off means no timer at all.
+- **Sampling:** only while the panel is open: first CPU figure after 1 s, then CPU and memory every 3 s, disk every 30 s.
 - No alerts, colors that warn, or "your Mac is slow" copy. Just numbers.
 - Only while Spruce is running. Opening Spruce at login is not in this phase.
 
@@ -28,7 +30,7 @@ first. The `Spruce` target adds a SwiftUI `MenuBarExtra` whose `isInserted` foll
 1. **Wrong CPU numbers** (first sample, a counter wrap after long uptime). Pinned by `cpuShare`.
 2. **Memory maths.** Pinned by `memoryUsedAddsTheRightParts`; readers sanity-checked live by `liveReadersArePlausible`.
 3. **Cost.** A sample must take well under a millisecond; checked by `sampleIsCheap` (1,000 samples).
-4. **Off really means off.** Sampling lives in the menu bar label's `.task`; with the item removed there's no label and no task.
+4. **Off really means off.** Sampling lives in the panel's `.task`; closed panel or removed item means no task.
 
 ---
 

@@ -1,8 +1,8 @@
 import SwiftUI
 import SpruceKit
 
-/// CPU, memory and free disk for the menu bar item. Samples only while `run()` is running, which is tied to the item's
-/// label: when the item leaves the menu bar, SwiftUI cancels the task and sampling stops.
+/// CPU, memory and free disk for the menu bar panel. Samples only while `run()` is running, which is tied to the panel:
+/// when the panel closes, SwiftUI cancels the task and sampling stops.
 @MainActor @Observable
 final class SystemMonitor {
     private(set) var cpu: Double?
@@ -15,7 +15,8 @@ final class SystemMonitor {
         disk = readDisk()
         var ticks = 0
         while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(3))
+            // The first CPU figure needs two samples, so it comes after a second; then every 3 s.
+            try? await Task.sleep(for: .seconds(ticks == 0 && cpu == nil ? 1 : 3))
             let now = readCPUTicks()
             if let last, let now { cpu = cpuShare(from: last, to: now) }
             last = now
@@ -62,27 +63,9 @@ private let spruceIcon: NSImage = {
     return image
 }()
 
+/// Just the tree. A template NSImage given straight to Image is what the menu bar draws reliably.
 struct MonitorLabel: View {
-    let monitor: SystemMonitor
-
-    var body: some View {
-        Image(nsImage: labelImage(cpu: monitor.cpu))
-            .task { await monitor.run() }
-    }
-}
-
-/// The tree and the CPU figure drawn into one template image. The menu bar drops a custom image placed inside Text (only
-/// SF Symbols survive there), so the whole label is an image, redrawn on each sample.
-@MainActor private func labelImage(cpu: Double?) -> NSImage {
-    let renderer = ImageRenderer(content: HStack(spacing: 3) {
-        Image(nsImage: spruceIcon)
-        Text(cpu.map(percent) ?? "\u{2013}").font(.system(size: 12, weight: .medium)).monospacedDigit()
-    }
-    .foregroundStyle(.black))
-    renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-    let image = renderer.nsImage ?? spruceIcon
-    image.isTemplate = true
-    return image
+    var body: some View { Image(nsImage: spruceIcon) }
 }
 
 struct MonitorPanel: View {
@@ -103,6 +86,7 @@ struct MonitorPanel: View {
         }
         .padding(14)
         .frame(width: 250)
+        .task { await monitor.run() }
     }
 
     private func row(_ title: String, symbol: String, share: Double?, detail: String?) -> some View {

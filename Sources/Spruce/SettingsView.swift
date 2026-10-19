@@ -58,7 +58,7 @@ struct SettingsView: View {
                 Toggle(isOn: $showMonitor) {
                     VStack(alignment: .leading) {
                         Text("Show CPU, memory and free disk in the menu bar")
-                        Text("Updates every few seconds while it\u{2019}s shown, and only while Spruce is open.")
+                        Text("A tree appears in the menu bar; click it for the numbers. Spruce only measures while that panel is open.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }

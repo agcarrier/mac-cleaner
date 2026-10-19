@@ -21,7 +21,7 @@ struct SpruceApp: App {
         MenuBarExtra(isInserted: $showMonitor) {
             MonitorPanel(monitor: state.monitor)
         } label: {
-            MonitorLabel(monitor: state.monitor)
+            MonitorLabel()
         }
         .menuBarExtraStyle(.window)
     }
