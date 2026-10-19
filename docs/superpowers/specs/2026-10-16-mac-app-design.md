@@ -123,7 +123,7 @@ Each phase ends with something Andrew can open and use.
 5. **My Clutter** (duplicates, then similar photos).
 6. **Updater.**
 7. **Menu bar monitor.**
-8. **Cloud & Mail.**
+8. **Cloud & Mail.** On hold (Andrew, 2026-10-19: not a feature he'll use). Phases 1–7 are built and merged.
 
 ## Calls made while writing this (Claude's, for Andrew to check)
 
