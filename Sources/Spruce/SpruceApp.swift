@@ -5,9 +5,10 @@ import SpruceKit
 @main
 struct SpruceApp: App {
     @State private var state = AppState()
+    @AppStorage(SettingsKey.menuBarMonitor) private var showMonitor = false
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             RootView(state: state)
         }
         .defaultSize(width: 900, height: 600)
@@ -15,6 +16,14 @@ struct SpruceApp: App {
         Settings {
             SettingsView()
         }
+
+        // Off by default; Settings → Menu bar turns it on.
+        MenuBarExtra(isInserted: $showMonitor) {
+            MonitorPanel(monitor: state.monitor)
+        } label: {
+            MonitorLabel(monitor: state.monitor)
+        }
+        .menuBarExtraStyle(.window)
     }
 }
 
@@ -27,6 +36,7 @@ final class AppState {
     let space = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.space), thresholds: { currentThresholds() }))
     let diskMap = DiskMapModel()
     let updates = UpdatesModel()
+    let monitor = SystemMonitor()
     let duplicates = ScanModel(scanner: liveClutterScanner(.duplicates, folders: { currentClutterFolders() }))
     let similar = ScanModel(scanner: liveClutterScanner(.similar, folders: { currentClutterFolders() }))
     let screenCleaner = ScreenCleaner()

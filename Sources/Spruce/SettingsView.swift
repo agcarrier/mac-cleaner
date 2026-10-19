@@ -8,6 +8,7 @@ enum SettingsKey {
     static let unlockCombo = "unlockCombo"
     static let screenCleanSeconds = "screenCleanSeconds"
     static let clutterFolders = "clutterFolders"
+    static let menuBarMonitor = "menuBarMonitor"
 }
 
 /// My Clutter's folders, one path per line in UserDefaults. Default: Desktop, Documents, Downloads, Pictures.
@@ -33,6 +34,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.idleProjectDays) private var idleProjectDays = 60
     @AppStorage(SettingsKey.unlockCombo) private var combo = KeyCombo.standard
     @AppStorage(SettingsKey.screenCleanSeconds) private var seconds = ScreenLock.defaultDuration
+    @AppStorage(SettingsKey.menuBarMonitor) private var showMonitor = false
 
     var body: some View {
         Form {
@@ -48,6 +50,15 @@ struct SettingsView: View {
                     VStack(alignment: .leading) {
                         Text("Idle projects: \(idleProjectDays) days")
                         Text("node_modules folders are listed once a project has had no changes for this long.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Section("Menu bar") {
+                Toggle(isOn: $showMonitor) {
+                    VStack(alignment: .leading) {
+                        Text("Show CPU, memory and free disk in the menu bar")
+                        Text("Updates every few seconds while it\u{2019}s shown, and only while Spruce is open.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
