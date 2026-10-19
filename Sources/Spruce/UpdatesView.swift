@@ -30,28 +30,33 @@ struct UpdatesView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            ToolHeader(tool: .applications)
             switch model.phase {
             case .idle:
                 Spacer()
+                ToolHeader(tool: .applications)
                 Text("Spruce asks the App Store, each app\u{2019}s own update feed, and Homebrew which apps have a newer version. It doesn\u{2019}t download or install anything.")
                     .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 460)
                 PillButton("Check for Updates") { model.check() }
                 Spacer()
             case .checking(let done, let total):
                 Spacer()
-                ProgressView()
+                ToolHeader(tool: .applications)
+                ProgressView().padding(.top, 8)
                 Text(total == 0 ? "Finding apps\u{2026}" : "Checked \(done) of \(total)").monospacedDigit().foregroundStyle(.secondary)
                 Spacer()
             case .done(let report):
                 if report.available.isEmpty {
                     Spacer()
-                    Text("Everything Spruce can check is up to date.").font(.title3).foregroundStyle(.secondary)
+                    ToolHeader(tool: .applications)
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 34)).foregroundStyle(.tint).padding(.top, 8)
+                    Text("Everything Spruce can check is up to date.").font(.title3)
                     Spacer()
                 } else {
+                    ToolHeader(tool: .applications, compact: true)
                     List(report.available) { UpdateRow(update: $0) }
                         .listStyle(.inset)
                         .scrollContentBackground(.hidden)
+                        .card()
                 }
                 HStack {
                     Text("\(report.available.count) to update \u{00B7} \(report.upToDate) up to date \u{00B7} \(report.unchecked.count) can\u{2019}t be checked")
@@ -64,6 +69,7 @@ struct UpdatesView: View {
             }
         }
         .padding([.horizontal, .bottom], 20)
+        .padding(.top, 8)
     }
 }
 

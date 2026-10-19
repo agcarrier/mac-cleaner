@@ -7,17 +7,20 @@ struct PerformanceView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            ToolHeader(tool: .performance)
-            Picker("", selection: $tab) {
-                ForEach(Tab.allCases, id: \.self) { Text($0.rawValue) }
+            HStack {
+                ToolHeader(tool: .performance, compact: true)
+                Picker("", selection: $tab) {
+                    ForEach(Tab.allCases, id: \.self) { Text($0.rawValue) }
+                }
+                .pickerStyle(.segmented).labelsHidden().fixedSize()
             }
-            .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 320)
             switch tab {
             case .startup: StartupItemsView()
             case .maintenance: MaintenanceView()
             }
         }
         .padding([.horizontal, .bottom], 20)
+        .padding(.top, 8)
     }
 }
 
@@ -59,6 +62,7 @@ private struct StartupItemsView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
+        .card()
         HStack {
             if let problem { Text(problem).font(.callout).foregroundStyle(.orange) }
             Spacer()
@@ -194,6 +198,7 @@ private struct MaintenanceView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
+        .card()
         .confirmationDialog("Rebuild the Spotlight index?", isPresented: $confirmSpotlight) {
             Button("Rebuild") { start(.spotlight) }
         } message: {

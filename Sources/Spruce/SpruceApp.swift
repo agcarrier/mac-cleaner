@@ -51,16 +51,26 @@ struct RootView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(Tool.allCases, selection: $tool) { tool in
-                SidebarTile(tool: tool).tag(tool)
+            List(selection: $tool) {
+                ForEach(Tool.sections, id: \.title) { section in
+                    Section(section.title) {
+                        ForEach(section.tools) { SidebarTile(tool: $0).tag($0) }
+                    }
+                }
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
+            .listStyle(.sidebar)
+            .safeAreaInset(edge: .bottom) { StorageCard { tool = .space }.padding(10) }
+            .navigationSplitViewColumnWidth(min: 190, ideal: 210)
         } detail: {
             let current = tool ?? .smartCare
             detail(for: current)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(ToolWash(tint: current.tint))
+                .tint(current.tint)
                 .navigationTitle(current.title)
+                // The wash runs up under the toolbar, and the header already names the tool.
+                .toolbarBackground(.hidden, for: .windowToolbar)
+                .modifier(HiddenToolbarTitle())
         }
         .frame(minWidth: 760, minHeight: 520)
         // Results were judged by the old rules, so drop them rather than leave stale ✓ items selectable.
@@ -75,13 +85,21 @@ struct RootView: View {
 
     @ViewBuilder private func detail(for tool: Tool) -> some View {
         switch tool {
-        case .smartCare: ScanToolView(tool: tool, model: state.smartCare, showsPermissionNote: true)
-        case .cleanup: ScanToolView(tool: tool, model: state.cleanup, showsPermissionNote: true)
+        case .smartCare: ScanToolView(tool: tool, model: state.smartCare, showsPermissionNote: true,
+                                      covers: MacCleanerCore.Category.scannable + [.devcaches, .downloads])
+        case .cleanup: ScanToolView(tool: tool, model: state.cleanup, showsPermissionNote: true, covers: MacCleanerCore.Category.scannable)
         case .space: SpaceView(model: state.space, diskMap: state.diskMap)
         case .applications: ApplicationsTool(updates: state.updates)
         case .performance: PerformanceView()
         case .myClutter: MyClutterView(duplicates: state.duplicates, similar: state.similar)
         case .screenClean: ScreenCleanView(cleaner: state.screenCleaner)
         }
+    }
+}
+
+/// Keeps the window's title (Window menu, Mission Control) but doesn't draw it in the toolbar. macOS 15 and later.
+private struct HiddenToolbarTitle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) { content.toolbar(removing: .title) } else { content }
     }
 }

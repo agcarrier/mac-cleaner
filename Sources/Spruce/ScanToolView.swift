@@ -2,65 +2,72 @@ import SwiftUI
 import MacCleanerCore
 import SpruceKit
 
-/// A tool screen driven by its model: start, scanning, review, cleaning, done.
+/// A tool screen driven by its model: start, scanning, review, cleaning, done. Results get a compact header and a card;
+/// every other state is one centered group.
 struct ScanToolView: View {
     let tool: Tool
     @Bindable var model: ScanModel
     var showsPermissionNote = false
+    /// What the scan looks at, shown on the start screen.
+    var covers: [MacCleanerCore.Category] = []
     /// Shown under the header, e.g. My Clutter's folder list.
     var accessory: AnyView? = nil
     @State private var confirming = false
 
+    private var showsResults: Bool {
+        if case .review = model.phase { !model.findings.isEmpty } else { false }
+    }
+
     var body: some View {
         VStack(spacing: 16) {
-            ToolHeader(tool: tool)
-            accessory
-            content
+            if showsResults {
+                ToolHeader(tool: tool, compact: true)
+                accessory
+                FindingsView(model: model).card()
+                HStack {
+                    Text("\(model.selectedFindings.count) selected · \(bytes(model.selectedBytes))")
+                        .monospacedDigit().foregroundStyle(.secondary)
+                    if let reason = model.blockedReason { Text(reason).foregroundStyle(.orange) }
+                    Spacer()
+                    Button("Scan Again") { model.scan() }
+                    PillButton("Clean") { confirming = true }
+                        .disabled(model.selectedFindings.isEmpty)
+                }
+            } else {
+                Spacer(minLength: 0)
+                ToolHeader(tool: tool)
+                accessory
+                centered.padding(.top, 8)
+                Spacer(minLength: 0)
+            }
             if showsPermissionNote { PermissionNote() }
         }
         .padding([.horizontal, .bottom], 20)
+        .padding(.top, 8)
         .sheet(isPresented: $confirming) { ConfirmCleanSheet(model: model) }
     }
 
-    @ViewBuilder private var content: some View {
+    @ViewBuilder private var centered: some View {
         switch model.phase {
         case .idle:
-            Spacer()
-            PillButton("Scan") { model.scan() }
-            Spacer()
+            if !covers.isEmpty { CoverageGrid(tool: tool, categories: covers) }
+            PillButton("Scan") { model.scan() }.padding(.top, 4)
         case .scanning(let category):
-            Spacer()
             ProgressView()
             Text(category.map { "Scanning \($0.title)…" } ?? "Starting…").foregroundStyle(.secondary)
             Button("Cancel") { model.cancel() }
-            Spacer()
-        case .review where model.findings.isEmpty:
-            Spacer()
-            Text("Nothing to clean.").font(.title3).foregroundStyle(.secondary)
-            Button("Scan Again") { model.scan() }
-            Spacer()
         case .review:
-            FindingsView(model: model)
-            HStack {
-                Text("\(model.selectedFindings.count) selected · \(bytes(model.selectedBytes))")
-                    .monospacedDigit().foregroundStyle(.secondary)
-                if let reason = model.blockedReason { Text(reason).foregroundStyle(.orange) }
-                Spacer()
-                Button("Scan Again") { model.scan() }
-                PillButton("Clean") { confirming = true }
-                    .disabled(model.selectedFindings.isEmpty)
-            }
+            Image(systemName: "checkmark.circle.fill").font(.system(size: 34)).foregroundStyle(.tint)
+            Text("Nothing to clean.").font(.title3)
+            Button("Scan Again") { model.scan() }
         case .cleaning:
-            Spacer()
             ProgressView("Checking nothing changed, then moving to the Trash…")
-            Spacer()
         case .done(let summary):
-            Spacer()
+            Image(systemName: "checkmark.circle.fill").font(.system(size: 34)).foregroundStyle(.tint)
             Text("Moved \(bytes(summary.bytes)) to the Trash.").font(.title3)
             Text("Empty the Trash to get the space back.").foregroundStyle(.secondary)
             if !summary.failures.isEmpty { FailureList(failures: summary.failures) }
             PillButton("Scan Again") { model.scan() }
-            Spacer()
         }
     }
 }

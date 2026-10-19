@@ -12,15 +12,16 @@ struct ScreenCleanView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            ToolHeader(tool: .screenClean)
             Spacer()
+            ToolHeader(tool: .screenClean)
             VStack(alignment: .leading, spacing: 8) {
                 Label("Every keyboard and trackpad stops working, and the screen goes dark.", systemImage: "keyboard")
                 Label("Press \(combo.display) to unlock.", systemImage: "command")
                 Label("It unlocks by itself after \(duration), in case the combo doesn't.", systemImage: "timer")
             }
             .padding(14)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .card()
+            .padding(.top, 8)
             if trusted {
                 PillButton("Start Screen Clean") { problem = cleaner.start(combo: combo, duration: seconds) }
             } else {

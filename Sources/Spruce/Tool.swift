@@ -6,6 +6,13 @@ enum Tool: String, CaseIterable, Identifiable {
 
     var id: Self { self }
 
+    /// Sidebar groups, in order.
+    static let sections: [(title: String, tools: [Tool])] = [
+        ("Clean", [.smartCare, .cleanup, .space]),
+        ("Manage", [.applications, .performance, .myClutter]),
+        ("Tools", [.screenClean]),
+    ]
+
     var title: String {
         switch self {
         case .smartCare: "Smart Care"

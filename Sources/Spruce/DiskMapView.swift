@@ -12,7 +12,7 @@ struct SpaceView: View {
     var body: some View {
         Group {
             switch mode {
-            case .findings: ScanToolView(tool: .space, model: model)
+            case .findings: ScanToolView(tool: .space, model: model, covers: MacCleanerCore.Category.space)
             case .map: DiskMapView(model: diskMap)
             }
         }
@@ -35,16 +35,16 @@ struct DiskMapView: View {
         VStack(spacing: 12) {
             switch model.phase {
             case .idle:
-                ToolHeader(tool: .space)
                 Spacer()
+                ToolHeader(tool: .space)
                 Text("See what\u{2019}s taking up space, folder by folder. Nothing is changed.").foregroundStyle(.secondary)
                 PillButton("Map Home Folder") { model.map(FileManager.default.homeDirectoryForCurrentUser) }
                 Button("Choose Folder\u{2026}") { chooseFolder() }
                 Spacer()
             case .measuring(let url):
-                ToolHeader(tool: .space)
                 Spacer()
-                ProgressView()
+                ToolHeader(tool: .space)
+                ProgressView().padding(.top, 8)
                 Text("Measuring \(url.lastPathComponent)\u{2026} \(model.itemsMeasured.formatted()) items")
                     .monospacedDigit().foregroundStyle(.secondary)
                 Button("Cancel") { model.cancel() }

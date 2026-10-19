@@ -46,10 +46,11 @@ struct ApplicationsView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            ToolHeader(tool: .applications)
+            ToolHeader(tool: .applications, compact: true)
             List(filtered, selection: $selection) { AppRow(app: $0.app) }
                 .listStyle(.inset)
                 .scrollContentBackground(.hidden)
+                .card()
                 .searchable(text: $query, placement: .toolbar, prompt: "Search apps")
             HStack {
                 Text("\(apps.count) apps").foregroundStyle(.secondary)
@@ -59,6 +60,7 @@ struct ApplicationsView: View {
             }
         }
         .padding([.horizontal, .bottom], 20)
+        .padding(.top, 8)
         .task { await reload() }
         .sheet(item: $uninstalling, onDismiss: { Task { await reload() } }) { UninstallSheet(app: $0.app) }
     }
