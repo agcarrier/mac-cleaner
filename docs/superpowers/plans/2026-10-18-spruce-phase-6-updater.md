@@ -68,13 +68,13 @@ Phase 1's constraints stand. Added for this phase:
 
 - [x] `swift test --scratch-path ~/Library/Caches/MacCleaner/spm`: all green.
 - [x] `tools/bundle-spruce.sh --install`.
-- [ ] **Andrew checks on his Mac:**
+- [x] **Andrew checks on his Mac** (passed 2026-10-18):
   1. Applications → Updates → Check for Updates. It finishes in a few seconds.
   2. The list matches reality for a couple of apps (e.g. Obsidian, Chrome, Docker): open one with "Open App" and use its own
      Check for Updates.
   3. An App Store app with an update (if any) opens its App Store page.
   4. Nothing listed is a beta or an app you already updated.
-- [ ] Commit on `spruce-phase-6-updater`; update the vault page and run `~/.claude/brain/brain sync`.
+- [x] Commit on `spruce-phase-6-updater`; update the vault page and run `~/.claude/brain/brain sync`.
 
 ## Known limits
 
