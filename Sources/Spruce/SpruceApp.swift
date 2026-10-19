@@ -37,6 +37,7 @@ final class AppState {
     let diskMap = DiskMapModel()
     let updates = UpdatesModel()
     let monitor = SystemMonitor()
+    let background = BackgroundItemsModel()
     let duplicates = ScanModel(scanner: liveClutterScanner(.duplicates, folders: { currentClutterFolders() }))
     let similar = ScanModel(scanner: liveClutterScanner(.similar, folders: { currentClutterFolders() }))
     let screenCleaner = ScreenCleaner()
@@ -90,7 +91,7 @@ struct RootView: View {
         case .cleanup: ScanToolView(tool: tool, model: state.cleanup, showsPermissionNote: true, covers: MacCleanerCore.Category.scannable)
         case .space: SpaceView(model: state.space, diskMap: state.diskMap)
         case .applications: ApplicationsTool(updates: state.updates)
-        case .performance: PerformanceView()
+        case .performance: PerformanceView(background: state.background)
         case .myClutter: MyClutterView(duplicates: state.duplicates, similar: state.similar)
         case .screenClean: ScreenCleanView(cleaner: state.screenCleaner)
         }

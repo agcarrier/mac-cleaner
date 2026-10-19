@@ -155,9 +155,11 @@ public func legacyDisallowed(_ output: String, uid: uid_t) -> Set<String> {
     Set(btmRecords(output, uid: uid).filter { btmType($0).hasPrefix("legacy") && btmDisposition($0).contains("disallowed") }.map(btmLabel))
 }
 
-/// Takes a few seconds. Empty when `sfltool` is missing or refuses.
-public func liveBackgroundItems(uid: uid_t = getuid()) -> (items: [BackgroundItem], legacyDisallowed: Set<String>) {
+/// Takes a few seconds, and macOS asks for an administrator password when an app runs it, so only call it from a click.
+/// Nil when `sfltool` is missing, refuses, or the password is cancelled.
+public func liveBackgroundItems(uid: uid_t = getuid()) -> (items: [BackgroundItem], legacyDisallowed: Set<String>)? {
     let output = String(decoding: run(["sfltool", "dumpbtm"]).1, as: UTF8.self)
+    guard output.contains("Records for UID \(uid) ") else { return nil }
     return (parseBTM(output, uid: uid), legacyDisallowed(output, uid: uid))
 }
 

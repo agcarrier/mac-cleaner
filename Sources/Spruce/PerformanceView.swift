@@ -1,7 +1,29 @@
 import SwiftUI
 import MacCleanerCore
 
+/// Apps that open at login and apps' helpers, from macOS's background items list. Reading it needs an administrator
+/// password, so it's read only when the user clicks Show, and kept for the session so switching tools doesn't ask again.
+@MainActor @Observable
+final class BackgroundItemsModel {
+    enum State { case notLoaded, loading, loaded([BackgroundItem]), unavailable }
+    private(set) var state = State.notLoaded
+    private(set) var legacyOff: Set<String> = []
+
+    func load() {
+        if case .loading = state { return }
+        state = .loading
+        Task {
+            if let found = await Task.detached(priority: .userInitiated, operation: { liveBackgroundItems() }).value {
+                (state, legacyOff) = (.loaded(found.items), found.legacyDisallowed)
+            } else {
+                state = .unavailable
+            }
+        }
+    }
+}
+
 struct PerformanceView: View {
+    let background: BackgroundItemsModel
     private enum Tab: String, CaseIterable { case startup = "Login & Background", maintenance = "Maintenance" }
     @State private var tab = Tab.startup
 
@@ -15,7 +37,7 @@ struct PerformanceView: View {
                 .pickerStyle(.segmented).labelsHidden().fixedSize()
             }
             switch tab {
-            case .startup: StartupItemsView()
+            case .startup: StartupItemsView(background: background)
             case .maintenance: MaintenanceView()
             }
         }
@@ -27,24 +49,35 @@ struct PerformanceView: View {
 // MARK: - Login & Background
 
 private struct StartupItemsView: View {
+    let background: BackgroundItemsModel
     @State private var agents: [LaunchAgent] = []
     @State private var disabled: Set<String> = []
     @State private var loaded: [String: Bool] = [:]
-    @State private var background: [BackgroundItem]?  // nil while sfltool runs
-    @State private var legacyOff: Set<String> = []
     @State private var switching: String?
     @State private var problem: String?
 
     var body: some View {
         List {
-            if let background {
-                let atLogin = background.filter { $0.kind == .opensAtLogin }
-                let helpers = background.filter { $0.kind != .opensAtLogin }
+            switch background.state {
+            case .loaded(let items):
+                let atLogin = items.filter { $0.kind == .opensAtLogin }
+                let helpers = items.filter { $0.kind != .opensAtLogin }
                 if !atLogin.isEmpty { Section("Open at login") { ForEach(atLogin) { BackgroundRow(item: $0) } } }
                 if !helpers.isEmpty { Section("Apps\u{2019} background helpers") { ForEach(helpers) { BackgroundRow(item: $0) } } }
-            } else {
+            case .loading:
                 Section("Open at login") {
                     HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Reading Login Items\u{2026}").foregroundStyle(.secondary) }
+                }
+            case .notLoaded, .unavailable:
+                Section("Open at login") {
+                    HStack(spacing: 10) {
+                        Text(isUnavailable
+                             ? "macOS didn\u{2019}t share the list. If you cancelled the password prompt, try again."
+                             : "Apps that open at login and apps\u{2019} background helpers. macOS asks for your password before Spruce can read this list.")
+                            .font(.callout).foregroundStyle(.secondary)
+                        Spacer()
+                        Button(isUnavailable ? "Try Again" : "Show\u{2026}") { background.load() }
+                    }
                 }
             }
             let mine = agents.filter { $0.scope == .user }
@@ -70,11 +103,7 @@ private struct StartupItemsView: View {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!)
             }
         }
-        .task {
-            await reloadAgents()
-            let found = await Task.detached(priority: .utility) { liveBackgroundItems() }.value
-            (background, legacyOff) = (found.items, found.legacyDisallowed)
-        }
+        .task { await reloadAgents() }
     }
 
     private func agentRow(_ agent: LaunchAgent) -> some View {
@@ -103,13 +132,15 @@ private struct StartupItemsView: View {
         if !agent.hasLabel { return "Empty or unlabeled file. macOS ignores it." }
         if agent.scope != .user { return agent.scope == .daemon ? "System daemon \u{00B7} needs an administrator to change" : "All users \u{00B7} needs an administrator to change" }
         if disabled.contains(agent.label) { return "Off" }
-        if legacyOff.contains(agent.label) { return "Off in System Settings \u{2192} Login Items" }
+        if background.legacyOff.contains(agent.label) { return "Off in System Settings \u{2192} Login Items" }
         switch loaded[agent.label] {
         case true?: return "Running"
         case false?: return "Loaded, waiting for its next run"
         case nil: return "Not loaded"
         }
     }
+
+    private var isUnavailable: Bool { if case .unavailable = background.state { true } else { false } }
 
     private func set(_ agent: LaunchAgent, _ on: Bool) async {
         switching = agent.id

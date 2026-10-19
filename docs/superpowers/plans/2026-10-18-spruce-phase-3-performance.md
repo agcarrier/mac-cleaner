@@ -90,6 +90,13 @@ Phase 1's constraints stand (scratch path, macOS 14, no dependencies, no nagging
   5. Maintenance → Flush DNS cache → macOS asks for the password; cancel once (nothing happens), then run it for real: "Done".
 - [x] Commit on `spruce-phase-3-performance`; update the vault page and run `~/.claude/brain/brain sync`.
 
+## Found later (2026-10-19)
+
+When Spruce runs it, `sfltool dumpbtm` makes macOS ask for an administrator password (from a terminal it didn't), and the tab
+ran it on every open, so the prompt appeared every time. That broke the "admin only on click" rule. Now the Open at login and
+helpers sections show a Show… button that says a password is coming; one successful read is kept until Spruce quits, and a
+cancelled prompt shows Try Again. Launch agents still load at once with no prompt.
+
 ## Known limits
 
 - Apps' helpers and "Open at login" apps are read-only: macOS lets only System Settings (or the app itself) change them.
