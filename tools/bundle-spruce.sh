@@ -29,6 +29,11 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>CFBundleURLTypes</key>
+    <array><dict>
+        <key>CFBundleURLName</key><string>dev.andrewcarrier.spruce.unlock</string>
+        <key>CFBundleURLSchemes</key><array><string>spruce</string></array>
+    </dict></array>
 </dict>
 </plist>
 PLIST

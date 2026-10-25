@@ -10,11 +10,14 @@ struct SpruceApp: App {
     var body: some Scene {
         WindowGroup(id: "main") {
             RootView(state: state)
+                .environment(state.supporter)
+                // spruce:// links land in the open window instead of opening another.
+                .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
         }
         .defaultSize(width: 900, height: 600)
 
         Settings {
-            SettingsView()
+            SettingsView().environment(state.supporter)
         }
 
         // Off by default; Settings → Menu bar turns it on.
@@ -41,6 +44,7 @@ final class AppState {
     let duplicates = ScanModel(scanner: liveClutterScanner(.duplicates, folders: { currentClutterFolders() }))
     let similar = ScanModel(scanner: liveClutterScanner(.similar, folders: { currentClutterFolders() }))
     let screenCleaner = ScreenCleaner()
+    let supporter = SupporterModel()
 }
 
 struct RootView: View {
@@ -78,6 +82,12 @@ struct RootView: View {
         .onChange(of: installerDays) { resetResults() }
         .onChange(of: idleProjectDays) { resetResults() }
         .onChange(of: clutterFolders) { [state.duplicates, state.similar].forEach { $0.reset() } }
+        // The key is untrusted input: unlock() only stores it if the signature checks out.
+        .onOpenURL { url in
+            guard let key = unlockKey(from: url) else { return }
+            state.supporter.unlock(key)
+            tool = .supporter
+        }
     }
 
     private func resetResults() {
@@ -94,6 +104,7 @@ struct RootView: View {
         case .performance: PerformanceView(background: state.background)
         case .myClutter: MyClutterView(duplicates: state.duplicates, similar: state.similar)
         case .screenClean: ScreenCleanView(cleaner: state.screenCleaner)
+        case .supporter: SupporterView()
         }
     }
 }

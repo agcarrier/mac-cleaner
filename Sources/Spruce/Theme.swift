@@ -7,6 +7,8 @@ import SpruceKit
 struct ToolHeader: View {
     let tool: Tool
     var compact = false
+    var title: String?
+    var subtitle: String?
 
     var body: some View {
         if compact {
@@ -21,8 +23,8 @@ struct ToolHeader: View {
         } else {
             VStack(spacing: 10) {
                 ToolGlyph(tool: tool, size: 72)
-                Text(tool.title).font(.title.bold())
-                Text(tool.subtitle).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Text(title ?? tool.title).font(.title.bold())
+                Text(subtitle ?? tool.subtitle).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
         }
     }

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The sidebar's tools, in order. Later phases add the menu bar monitor and Cloud & Mail.
 enum Tool: String, CaseIterable, Identifiable {
-    case smartCare, cleanup, space, applications, performance, myClutter, screenClean
+    case smartCare, cleanup, space, applications, performance, myClutter, screenClean, supporter
 
     var id: Self { self }
 
@@ -10,7 +10,7 @@ enum Tool: String, CaseIterable, Identifiable {
     static let sections: [(title: String, tools: [Tool])] = [
         ("Clean", [.smartCare, .cleanup, .space]),
         ("Manage", [.applications, .performance, .myClutter]),
-        ("Tools", [.screenClean]),
+        ("Tools", [.screenClean, .supporter]),
     ]
 
     var title: String {
@@ -22,6 +22,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .performance: "Performance"
         case .myClutter: "My Clutter"
         case .screenClean: "Screen Clean"
+        case .supporter: "Supporter"
         }
     }
 
@@ -34,6 +35,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .performance: "gauge.with.dots.needle.67percent"
         case .myClutter: "doc.on.doc.fill"
         case .screenClean: "keyboard"
+        case .supporter: "heart.fill"
         }
     }
 
@@ -46,6 +48,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .performance: .pink
         case .myClutter: .teal
         case .screenClean: .gray
+        case .supporter: .red
         }
     }
 
@@ -58,6 +61,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .performance: "What starts with your Mac, and a few maintenance tasks."
         case .myClutter: "Duplicate files and similar photos in the folders you choose."
         case .screenClean: "Lock the keyboard and trackpad so you can wipe them and the screen."
+        case .supporter: "Spruce is free. If it helps you, you can say thanks."
         }
     }
 }
