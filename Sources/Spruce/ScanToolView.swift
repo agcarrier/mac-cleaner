@@ -45,6 +45,7 @@ struct ScanToolView: View {
         .padding([.horizontal, .bottom], 20)
         .padding(.top, 8)
         .sheet(isPresented: $confirming) { ConfirmCleanSheet(model: model) }
+        .overlay { if case .done(let summary) = model.phase, summary.bytes > 0 { LeafFall(tint: tool.tint) } }
     }
 
     @ViewBuilder private var centered: some View {

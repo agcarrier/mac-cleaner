@@ -9,6 +9,7 @@ enum SettingsKey {
     static let screenCleanSeconds = "screenCleanSeconds"
     static let clutterFolders = "clutterFolders"
     static let menuBarMonitor = "menuBarMonitor"
+    static let rustleSound = "rustleSound"
 }
 
 /// My Clutter's folders, one path per line in UserDefaults. Default: Desktop, Documents, Downloads, Pictures.
@@ -30,6 +31,8 @@ func currentThresholds() -> Thresholds {
 }
 
 struct SettingsView: View {
+    @Environment(SupporterModel.self) private var supporter
+    @AppStorage(SettingsKey.rustleSound) private var rustle = false
     @AppStorage(SettingsKey.installerDays) private var installerDays = 30
     @AppStorage(SettingsKey.idleProjectDays) private var idleProjectDays = 60
     @AppStorage(SettingsKey.unlockCombo) private var combo = KeyCombo.standard
@@ -62,6 +65,12 @@ struct SettingsView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+            }
+            Section("Sounds") {
+                Toggle(isOn: $rustle) {
+                    SupporterLabel("Rustle when a clean finishes", detail: "A soft rustle of leaves. Off by default.")
+                }
+                .disabled(!supporter.isSupporter)
             }
             Section("Screen Clean") {
                 ComboRecorder(combo: $combo)
@@ -131,5 +140,30 @@ struct ComboRecorder: View {
         let chars = event.charactersIgnoringModifiers?.uppercased() ?? ""
         let printable = !chars.isEmpty && chars.unicodeScalars.allSatisfy { $0.value > 0x20 && !(0xF700...0xF8FF).contains($0.value) }
         return printable ? chars : "Key \(event.keyCode)"
+    }
+}
+
+/// A setting's title and caption; supporter-only settings say so until Spruce is unlocked.
+struct SupporterLabel: View {
+    @Environment(SupporterModel.self) private var supporter
+    let title: String
+    let detail: String
+
+    init(_ title: String, detail: String) {
+        self.title = title
+        self.detail = detail
+    }
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            HStack(spacing: 6) {
+                Text(title)
+                if !supporter.isSupporter {
+                    Text("Supporter").font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 1)
+                        .background(Capsule().fill(.red.opacity(0.15))).foregroundStyle(.red)
+                }
+            }
+            Text(detail).font(.caption).foregroundStyle(.secondary)
+        }
     }
 }
