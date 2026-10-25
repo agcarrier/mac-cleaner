@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es2022", "module": "esnext", "moduleResolution": "bundler", "strict": true, "noEmit": true,
+    "target": "es2022", "lib": ["es2022"], "skipLibCheck": true, "module": "esnext", "moduleResolution": "bundler", "strict": true, "noEmit": true,
     "allowImportingTsExtensions": true, "resolveJsonModule": true, "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src", "test"]
+  "include": ["src"]
 }
