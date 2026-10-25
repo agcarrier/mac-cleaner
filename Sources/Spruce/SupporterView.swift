@@ -31,8 +31,7 @@ struct SupporterView: View {
         }
     }
 
-    // Filled by the forest (Task 4).
-    private var forest: some View { EmptyView() }
+    private var forest: some View { ForestView(isSupporter: supporter.isSupporter) }
 
     private var extras: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 12)], spacing: 12) {

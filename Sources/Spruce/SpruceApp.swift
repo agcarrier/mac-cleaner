@@ -11,6 +11,7 @@ struct SpruceApp: App {
         WindowGroup(id: "main") {
             RootView(state: state)
                 .environment(state.supporter)
+                .environment(state.forest)
                 // spruce:// links land in the open window instead of opening another.
                 .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
         }
@@ -33,18 +34,30 @@ struct SpruceApp: App {
 /// One model per tool, so results survive switching tools within a session.
 @MainActor @Observable
 final class AppState {
-    let smartCare = ScanModel(onlyPreselected: true,
-                              scanner: liveScanner(Set(MacCleanerCore.Category.scannable).union([.devcaches, .downloads]), thresholds: { currentThresholds() }))
-    let cleanup = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.scannable), thresholds: { currentThresholds() }))
-    let space = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.space), thresholds: { currentThresholds() }))
+    let forest = ForestStore()
+    let smartCare: ScanModel
+    let cleanup: ScanModel
+    let space: ScanModel
     let diskMap = DiskMapModel()
     let updates = UpdatesModel()
     let monitor = SystemMonitor()
     let background = BackgroundItemsModel()
-    let duplicates = ScanModel(scanner: liveClutterScanner(.duplicates, folders: { currentClutterFolders() }))
-    let similar = ScanModel(scanner: liveClutterScanner(.similar, folders: { currentClutterFolders() }))
+    let duplicates: ScanModel
+    let similar: ScanModel
     let screenCleaner = ScreenCleaner()
     let supporter = SupporterModel()
+
+    init() {
+        // Every clean plants its bytes in the forest.
+        let planted: @MainActor (CleanSummary) -> Void = { [forest] in forest.record($0.bytes) }
+        smartCare = ScanModel(onlyPreselected: true,
+                              scanner: liveScanner(Set(MacCleanerCore.Category.scannable).union([.devcaches, .downloads]), thresholds: { currentThresholds() }),
+                              onCleaned: planted)
+        cleanup = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.scannable), thresholds: { currentThresholds() }), onCleaned: planted)
+        space = ScanModel(scanner: liveScanner(Set(MacCleanerCore.Category.space), thresholds: { currentThresholds() }), onCleaned: planted)
+        duplicates = ScanModel(scanner: liveClutterScanner(.duplicates, folders: { currentClutterFolders() }), onCleaned: planted)
+        similar = ScanModel(scanner: liveClutterScanner(.similar, folders: { currentClutterFolders() }), onCleaned: planted)
+    }
 }
 
 struct RootView: View {

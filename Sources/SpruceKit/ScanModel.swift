@@ -41,15 +41,18 @@ public final class ScanModel {
     private let scanner: Scanner
     private let performer: Performer
     private let preflight: @Sendable () -> String?
+    private let onCleaned: @MainActor (CleanSummary) -> Void
     private var scanTask: Task<Void, Never>?
     private var scanID = UUID()
 
     public init(onlyPreselected: Bool = false, scanner: @escaping Scanner, performer: @escaping Performer = perform,
-                preflight: @escaping @Sendable () -> String? = { nil }) {
+                preflight: @escaping @Sendable () -> String? = { nil },
+                onCleaned: @escaping @MainActor (CleanSummary) -> Void = { _ in }) {
         self.onlyPreselected = onlyPreselected
         self.scanner = scanner
         self.performer = performer
         self.preflight = preflight
+        self.onCleaned = onCleaned
     }
 
     public var selectedFindings: [Finding] { findings.filter { $0.isActionable && selection.contains($0.id) } }
@@ -171,5 +174,6 @@ public final class ScanModel {
             return CleanSummary(cleaned: cleaned, bytes: bytes, failures: failures)
         }.value
         phase = .done(summary)
+        if summary.bytes > 0 { onCleaned(summary) }
     }
 }

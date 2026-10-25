@@ -1,4 +1,5 @@
 import SwiftUI
+import SpruceKit
 import MacCleanerCore
 
 /// An installed app, identified by where it lives.
@@ -38,6 +39,7 @@ struct ApplicationsView: View {
     @State private var query = ""
     @State private var selection: AppItem.ID?
     @State private var uninstalling: AppItem?
+    @Environment(ForestStore.self) private var forest
 
     private var filtered: [AppItem] {
         guard !query.isEmpty else { return apps }
@@ -62,7 +64,7 @@ struct ApplicationsView: View {
         .padding([.horizontal, .bottom], 20)
         .padding(.top, 8)
         .task { await reload() }
-        .sheet(item: $uninstalling, onDismiss: { Task { await reload() } }) { UninstallSheet(app: $0.app) }
+        .sheet(item: $uninstalling, onDismiss: { Task { await reload() } }) { UninstallSheet(app: $0.app, forest: forest) }
     }
 
     private func reload() async {

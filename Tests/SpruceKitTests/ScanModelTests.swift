@@ -188,3 +188,19 @@ private func waitWhileScanning(_ m: ScanModel) async {
     m.scan(); await waitWhileScanning(m)
     #expect(m.findings.map(\.title) == ["high", "b-kept", "b1", "s-kept", "s1", "s2"])
 }
+
+@Test @MainActor func cleanReportsBytesOnce() async {
+    var reported: [Int64] = []
+    let m = ScanModel(scanner: { _ in [high, low] }, performer: { _ in }, onCleaned: { reported.append($0.bytes) })
+    m.scan(); await waitWhileScanning(m)
+    await m.clean()
+    #expect(reported == [300])
+    await m.clean()  // done, nothing selected to act on again
+    #expect(reported == [300])
+
+    // A clean that moved nothing isn't reported.
+    let none = ScanModel(scanner: { _ in [high] }, performer: { _ in throw Boom() }, onCleaned: { reported.append($0.bytes) })
+    none.scan(); await waitWhileScanning(none)
+    await none.clean()
+    #expect(reported == [300])
+}

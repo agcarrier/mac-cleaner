@@ -11,11 +11,12 @@ struct UninstallSheet: View {
     @State private var confirming = false
     @Environment(\.dismiss) private var dismiss
 
-    init(app: AppInfo) {
+    init(app: AppInfo, forest: ForestStore) {
         self.app = app
         _model = State(initialValue: ScanModel(
             scanner: { _ in uninstallFindings(for: app, liveContext(thresholds: currentThresholds(), includeInstalled: false)) },
-            preflight: { isRunning(app) ? "Quit \(app.name) to uninstall it." : nil }))
+            preflight: { isRunning(app) ? "Quit \(app.name) to uninstall it." : nil },
+            onCleaned: { forest.record($0.bytes) }))
     }
 
     var body: some View {
