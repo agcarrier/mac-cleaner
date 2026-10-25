@@ -200,18 +200,18 @@ let btmFixture = """
 @Test func toggleCommands() {
     let plist = URL(filePath: "/Users/me/Library/LaunchAgents/com.foo.agent.plist")
     #expect(MacCleanerCore.toggleCommands(label: "com.foo.agent", plist: plist, uid: 501, enable: false) == [
-        ["launchctl", "disable", "gui/501/com.foo.agent"],
-        ["launchctl", "bootout", "gui/501/com.foo.agent"],
+        ["/bin/launchctl", "disable", "gui/501/com.foo.agent"],
+        ["/bin/launchctl", "bootout", "gui/501/com.foo.agent"],
     ])
     #expect(MacCleanerCore.toggleCommands(label: "com.foo.agent", plist: plist, uid: 501, enable: true) == [
-        ["launchctl", "enable", "gui/501/com.foo.agent"],
-        ["launchctl", "bootstrap", "gui/501", plist.path],
+        ["/bin/launchctl", "enable", "gui/501/com.foo.agent"],
+        ["/bin/launchctl", "bootstrap", "gui/501", plist.path],
     ])
 }
 
 @Test func adminWrapperEscapes() {
     let args = adminWrapped(#"echo "hi" \ there"#)
-    #expect(args.first == "osascript")
+    #expect(args.first == "/usr/bin/osascript")
     let script = args.dropFirst().filter { $0 != "-e" }.joined(separator: "\n")
     #expect(script.contains(#"do shell script "echo \"hi\" \\ there""#))
     #expect(script.contains("with administrator privileges"))
@@ -226,6 +226,6 @@ let btmFixture = """
         #expect(!task.command.isEmpty)
         // Admin tasks go through the password dialog, never a bare sudo.
         #expect(!task.command.joined(separator: " ").contains("sudo"))
-        if task.needsAdmin { #expect(task.command.first == "osascript") }
+        if task.needsAdmin { #expect(task.command.first == "/usr/bin/osascript") }
     }
 }

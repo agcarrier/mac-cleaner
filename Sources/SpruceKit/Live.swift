@@ -33,7 +33,10 @@ public func liveClutterScanner(_ category: MacCleanerCore.Category, folders: @es
     { progress in
         let task = Task.detached(priority: .userInitiated) {
             progress(category)
-            return category == .similar ? findSimilarPhotos(in: folders()) : findDuplicates(in: folders())
+            // Only the home folder or external disks, even if Settings were edited by hand.
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let allowed = folders().filter { isAllowedClutterFolder($0, home: home) }
+            return category == .similar ? findSimilarPhotos(in: allowed) : findDuplicates(in: allowed)
         }
         return await withTaskCancellationHandler { await task.value } onCancel: { task.cancel() }
     }

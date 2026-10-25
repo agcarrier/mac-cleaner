@@ -152,6 +152,22 @@ Not from the teardown; this covers where a developer Mac's space actually goes.
 - **Similar photos:** Vision feature prints, compared within a folder; a photo joins a group if its distance to the group's first
   photo is under 0.45. Always ○.
 
+### Safety and security rules (Spruce, 2026-10-25)
+
+Added before posting Spruce publicly; audited path by path.
+- **Last line of defense:** `trash()` refuses, whatever rule asked: the home folder and anything directly in it; `~/Library`
+  and its standard folders; Keychains, iCloud Drive, CloudStorage, Mail, Messages, Accounts; anything named `com.apple.*`
+  (except inside a Caches folder); Photos libraries; and everything outside home except `.app` bundles in `/Applications` or
+  `/Users/Shared` and files on external disks. Checked live: all 428 items Spruce would offer on Andrew's Mac pass.
+- **Orphaned user data never starts checked:** orphaned `Containers` and `Application Support` are ○ (an app on an unplugged disk
+  looks orphaned). Caches, cookies and saved window state can still be ✓.
+- **Short bundle IDs** (fewer than three parts) own only themselves, never children.
+- **Launch agents** whose program is on `/Volumes` aren't "broken".
+- **My Clutter** only scans inside home or on external disks.
+- **Commands** run by full path (`run()` refuses anything else); admin shell commands use full paths too.
+- **Links** from feeds and stores open only if they're `https`.
+- **Signing:** hardened runtime always; Developer ID + notarization via `tools/bundle-spruce.sh --share` once available.
+
 ## Other scanners
 
 - **Trash:** user trash, mounted volumes' `.Trashes`, Mail trash.

@@ -140,6 +140,9 @@ public func perform(_ action: Action) throws {
 /// such a file came from. Any other failure is thrown and the file stays put.
 func trash(_ url: URL, home: URL = FileManager.default.homeDirectoryForCurrentUser,
            trashItem: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }) throws {
+    if let reason = protectedReason(url, home: home) {
+        throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "Spruce never moves \(url.lastPathComponent) to the Trash: it's \(reason)."])
+    }
     do {
         try trashItem(url)
     } catch let error as CocoaError where error.code == .fileWriteNoPermission {
@@ -161,7 +164,7 @@ func trash(_ url: URL, home: URL = FileManager.default.homeDirectoryForCurrentUs
 
 /// Every app bundle Spotlight knows about, including nested helper apps, plus a folder walk.
 public func installedAppPaths(home: URL) -> Set<String> {
-    var paths = Set(String(decoding: run(["mdfind", "kMDItemContentType == 'com.apple.application-bundle'"]).1, as: UTF8.self)
+    var paths = Set(String(decoding: run(["/usr/bin/mdfind", "kMDItemContentType == 'com.apple.application-bundle'"]).1, as: UTF8.self)
         .split(separator: "\n").map(String.init))
     // Fallback for when Spotlight is off or still indexing: app folders plus one level of subfolders (Utilities, vendor folders).
     for root in [URL(filePath: "/Applications"), URL(filePath: "/System/Applications"), home.appending(path: "Applications")] {
@@ -190,14 +193,15 @@ func scanOrphans(_ c: Context) -> [Finding] {
             if looksLikeBundleID(name) { items.append((name, url, sub)) }
         }
     }
-    // Containers and saved window state only exist for real GUI apps. Prefs and Application Support can belong to
-    // CLI tools and helpers we can't see, so on their own they stay low confidence.
+    // Containers and saved window state only exist for real GUI apps. Prefs can belong to CLI tools and helpers we can't
+    // see, so on their own they stay low confidence. Containers and Application Support hold the user's own data, and an
+    // app Spruce can't see (on an external disk, say) would make them look orphaned, so they never start checked.
     let guiApps = Set(items.filter { $0.dir == "Containers" || $0.dir == "Saved Application State" }.map { $0.id.lowercased() })
     return items.compactMap { item in
         let owner = ownership(of: item.id, by: c.installed)
         guard owner == .orphan || owner == .sameVendor else { return nil }
-        let risky = item.dir == "Preferences" || item.dir == "Application Support"
-        let high = owner == .orphan && (!risky || guiApps.contains(item.id.lowercased()))
+        let userData = item.dir == "Containers" || item.dir == "Application Support"
+        let high = owner == .orphan && !userData && (item.dir != "Preferences" || guiApps.contains(item.id.lowercased()))
         let why = owner == .orphan ? "no installed app" : "vendor still has an installed app"
         return Finding(category: .orphans, title: item.id, detail: "\(item.dir), \(why)",
                        size: allocatedSize(item.url), confidence: high ? .high : .low, action: .trash([item.url]))
@@ -259,7 +263,8 @@ func scanLaunchAgents(_ c: Context) -> [Finding] {
         let apps = associatedApps(plist)
         let program = launchProgram(plist)
         let why: String
-        if let program, program.hasPrefix("/"), !FileManager.default.fileExists(atPath: program) {
+        // A program on a disk that isn't plugged in isn't gone.
+        if let program, program.hasPrefix("/"), !program.hasPrefix("/Volumes/"), !FileManager.default.fileExists(atPath: program) {
             why = "program is gone: \(program)"
         } else if !apps.isEmpty, apps.allSatisfy({ ownership(of: $0, by: c.installed) == .orphan }) {
             why = "its app \(apps[0]) is not installed"
@@ -305,13 +310,13 @@ func scanXcode(_ c: Context) -> [Finding] {
     if !sims.isEmpty {
         let size = sims.reduce(0) { $0 + allocatedSize(dev.appending(path: "CoreSimulator/Devices/\($1)")) }
         out.append(Finding(category: .xcode, title: "\(sims.count) unavailable simulators", detail: "their runtime is no longer installed; deleted permanently by simctl, not moved to the Trash",
-                           size: size, confidence: xcodeOpen ? .low : .high, action: .run(["xcrun", "simctl", "delete", "unavailable"])))
+                           size: size, confidence: xcodeOpen ? .low : .high, action: .run(["/usr/bin/xcrun", "simctl", "delete", "unavailable"])))
     }
     return out
 }
 
 func unavailableSimulators() -> [String] {
-    let (status, data) = run(["xcrun", "simctl", "list", "devices", "unavailable", "--json"])
+    let (status, data) = run(["/usr/bin/xcrun", "simctl", "list", "devices", "unavailable", "--json"])
     guard status == 0, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
           let devices = json["devices"] as? [String: [[String: Any]]] else { return [] }
     return devices.values.flatMap { $0.compactMap { $0["udid"] as? String } }
@@ -335,10 +340,12 @@ public func allocatedSize(_ url: URL) -> Int64 {
     return total
 }
 
+/// Runs a command by its full path. Never looked up by name: a changed PATH can't swap in another program.
 func run(_ args: [String]) -> (Int32, Data) {
+    guard let tool = args.first, tool.hasPrefix("/") else { return (-1, Data()) }
     let process = Process()
-    process.executableURL = URL(filePath: "/usr/bin/env")
-    process.arguments = args
+    process.executableURL = URL(filePath: tool)
+    process.arguments = Array(args.dropFirst())
     let pipe = Pipe()
     process.standardOutput = pipe
     process.standardError = FileHandle.nullDevice

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Builds Spruce.app. Everything is built under ~/Library/Caches: this repo lives in iCloud-synced Documents,
 # where the file provider tags bundles with attributes that make codesign refuse them.
-# `tools/bundle-spruce.sh --install` also copies it to /Applications.
+# `tools/bundle-spruce.sh --install` also copies it to /Applications; `--share` makes a zip in dist/ (see the end).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -34,15 +34,42 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 
 # Full Disk Access is tied to the app's signature, and an ad-hoc signature changes on every build, which would
-# silently drop the permission. So sign with this Mac's Apple Development certificate when there is one.
-# Local use only: sharing needs a Developer ID certificate and notarization, which this script does not do.
-IDENTITY=$(security find-identity -v -p codesigning | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)
+# silently drop the permission. So sign with a real certificate when there is one: a Developer ID (for sharing; needs
+# the paid Apple Developer Program) if present, else this Mac's Apple Development certificate (this Mac only).
+# Switching certificates changes the signature once, so Full Disk Access has to be granted again after that switch.
+CERTS=$(security find-identity -v -p codesigning)
+IDENTITY=$(echo "$CERTS" | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)
+[ -z "$IDENTITY" ] && IDENTITY=$(echo "$CERTS" | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)
 xattr -cr "$APP"
-codesign --force --sign "${IDENTITY:--}" "$APP"
-echo "Built $APP (signed: ${IDENTITY:-ad-hoc})"
+# Hardened runtime: blocks code injection (DYLD_* variables, unsigned libraries). Notarization requires it.
+SIGN=(--force --options runtime --sign "${IDENTITY:--}")
+case "$IDENTITY" in "Developer ID"*) SIGN+=(--timestamp) ;; esac
+codesign "${SIGN[@]}" "$APP"
+echo "Built $APP (signed: ${IDENTITY:-ad-hoc}, hardened runtime)"
 
 if [ "${1:-}" = "--install" ]; then
     rm -rf /Applications/Spruce.app
     ditto "$APP" /Applications/Spruce.app
     echo "Installed /Applications/Spruce.app"
+fi
+
+# `--share`: a zip in dist/ to hand out. With a Developer ID certificate and notary credentials saved once with
+#   xcrun notarytool store-credentials spruce-notary --apple-id <you> --team-id <team>
+# it's notarized and stapled, so it opens with no warning. Without them, people have to click Open Anyway once.
+if [ "${1:-}" = "--share" ]; then
+    VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist")
+    mkdir -p dist
+    ZIP="dist/Spruce-$VERSION.zip"
+    rm -f "$ZIP"
+    case "$IDENTITY" in
+        "Developer ID"*)
+            ditto -c -k --keepParent "$APP" "$OUT/notarize.zip"
+            xcrun notarytool submit "$OUT/notarize.zip" --keychain-profile "${NOTARY_PROFILE:-spruce-notary}" --wait
+            xcrun stapler staple "$APP"
+            rm -f "$OUT/notarize.zip"
+            echo "Notarized and stapled." ;;
+        *) echo "No Developer ID certificate: the zip isn't notarized, so people click Open Anyway once." ;;
+    esac
+    ditto -c -k --keepParent "$APP" "$ZIP"
+    echo "Shared build: $ZIP"
 fi

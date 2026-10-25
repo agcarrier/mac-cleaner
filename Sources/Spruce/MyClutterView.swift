@@ -1,5 +1,6 @@
 import SwiftUI
 import SpruceKit
+import MacCleanerCore
 
 /// Duplicates or similar photos, each its own scan; the switch sits in the toolbar like Space's.
 struct MyClutterView: View {
@@ -29,6 +30,7 @@ struct MyClutterView: View {
 /// The folders My Clutter looks in. Changing them drops old results (RootView watches the key).
 private struct FolderList: View {
     @AppStorage(SettingsKey.clutterFolders) private var stored = ""
+    @State private var refused: String?
 
     private var folders: [URL] { stored.isEmpty ? defaultClutterFolders : stored.split(separator: "\n").map { URL(filePath: String($0)) } }
 
@@ -56,6 +58,9 @@ private struct FolderList: View {
             if !stored.isEmpty { Button("Reset") { stored = "" } }
         }
         .frame(maxWidth: 640)
+        .overlay(alignment: .bottom) {
+            if let refused { Text(refused).font(.caption).foregroundStyle(.orange).offset(y: 18) }
+        }
     }
 
     private func save(_ urls: [URL]) {
@@ -70,6 +75,9 @@ private struct FolderList: View {
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
         panel.prompt = "Add"
         guard panel.runModal() == .OK else { return }
-        save(folders + panel.urls.filter { new in !folders.contains { $0.path == new.path } })
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let (ok, no) = (panel.urls.filter { isAllowedClutterFolder($0, home: home) }, panel.urls.filter { !isAllowedClutterFolder($0, home: home) })
+        refused = no.isEmpty ? nil : "Spruce only looks in your home folder or on external disks, so it skipped \(no.map(\.lastPathComponent).joined(separator: ", "))."
+        save(folders + ok.filter { new in !folders.contains { $0.path == new.path } })
     }
 }

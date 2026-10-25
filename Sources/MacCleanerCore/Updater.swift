@@ -137,7 +137,7 @@ public struct AvailableUpdate: Sendable, Identifiable {
     public let installed: String
     public let latest: String
     public let source: UpdateSource
-    /// The App Store page, the release notes, or the app's website.
+    /// The App Store page, the release notes, or the app's website. Only https links survive (`webLink`).
     public let link: URL?
     public var id: String { app.url.path }
 }
@@ -211,14 +211,14 @@ private func check(_ app: AppInfo, casks: [String: Cask], os: OperatingSystemVer
         var lookup = URLComponents(string: "https://itunes.apple.com/lookup")!
         lookup.queryItems = [URLQueryItem(name: "bundleId", value: app.bundleID), URLQueryItem(name: "country", value: region)]
         guard let data = try? await fetch(lookup.url!), let found = parseAppStoreLookup(data) else { return .unknown(app) }
-        return result(isNewer(found.version, than: short), found.version, .appStore, found.url)
+        return result(isNewer(found.version, than: short), found.version, .appStore, webLink(found.url?.absoluteString))
     }
     if let feed = feed(app) {
         guard let data = try? await fetch(feed), let item = parseAppcast(data, os: os) else { return .unknown(app) }
-        return result(isNewer(item.version, than: build), item.shortVersion, .sparkle, item.releaseNotes)
+        return result(isNewer(item.version, than: build), item.shortVersion, .sparkle, webLink(item.releaseNotes?.absoluteString))
     }
     if let cask = casks[app.url.lastPathComponent] {
-        return result(isNewer(cask.version, than: short), cask.version, .homebrew, cask.homepage)
+        return result(isNewer(cask.version, than: short), cask.version, .homebrew, webLink(cask.homepage?.absoluteString))
     }
     return .unknown(app)
 }

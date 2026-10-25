@@ -74,7 +74,7 @@ func scanLargeFiles(_ c: Context) -> [Finding] {
 }
 
 func spotlight(_ args: [String]) -> [URL] {
-    String(decoding: run(["mdfind"] + args).1, as: UTF8.self).split(separator: "\n").map { URL(filePath: String($0)) }
+    String(decoding: run(["/usr/bin/mdfind"] + args).1, as: UTF8.self).split(separator: "\n").map { URL(filePath: String($0)) }
 }
 
 func modified(_ url: URL) -> Date? {

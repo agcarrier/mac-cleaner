@@ -17,9 +17,10 @@ public struct AppInfo: Sendable {
     public var isApple: Bool { bundleID.lowercased().hasPrefix("com.apple.") || url.path.hasPrefix("/System/") }
 
     /// The app's own ID or a child of it (helpers, extensions): com.foo.app, com.foo.app.helper. Never com.foo.apple.
+    /// Children only count for IDs with three or more parts: an app called com.google mustn't claim com.google.Chrome.
     func owns(_ name: String) -> Bool {
         let n = name.lowercased(), id = bundleID.lowercased()
-        return n == id || n.hasPrefix(id + ".")
+        return n == id || (id.split(separator: ".").count >= 3 && n.hasPrefix(id + "."))
     }
 
     /// Same developer by reverse-DNS prefix: com.docker.vmnetd for com.docker.docker.
@@ -30,7 +31,7 @@ public struct AppInfo: Sendable {
 
     /// App groups the app declares in its code signature; their folders live in ~/Library/Group Containers.
     var appGroups: [String] {
-        let (status, data) = run(["codesign", "-d", "--entitlements", "-", "--xml", url.path])
+        let (status, data) = run(["/usr/bin/codesign", "-d", "--entitlements", "-", "--xml", url.path])
         guard status == 0, let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else { return [] }
         return plist["com.apple.security.application-groups"] as? [String] ?? []
     }
@@ -151,7 +152,7 @@ public func systemItems(for app: AppInfo, root: URL = URL(filePath: "/"), receip
         guard let why = link(url.lastPathComponent) else { continue }
         out.append(SystemItem(path: url.path, why: why, command: "sudo mv '\(url.path)' ~/.Trash/"))
     }
-    let pkgs = receipts ?? String(decoding: run(["pkgutil", "--pkgs"]).1, as: UTF8.self).split(separator: "\n").map(String.init)
+    let pkgs = receipts ?? String(decoding: run(["/usr/sbin/pkgutil", "--pkgs"]).1, as: UTF8.self).split(separator: "\n").map(String.init)
     for pkg in pkgs {
         guard let why = link(pkg) else { continue }
         out.append(SystemItem(path: "installer receipt \(pkg)", why: why, command: "sudo pkgutil --forget \(pkg)"))

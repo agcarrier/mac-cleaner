@@ -63,8 +63,8 @@ public func parseLoaded(_ output: String) -> [String: Bool] {
 /// Off: disable (persistent, kept by launchd, the plist isn't touched) then bootout (stop it now).
 /// On: enable then bootstrap from the same plist. The second command is best effort: it fails when already stopped or loaded.
 public func toggleCommands(label: String, plist: URL, uid: uid_t, enable: Bool) -> [[String]] {
-    enable ? [["launchctl", "enable", "gui/\(uid)/\(label)"], ["launchctl", "bootstrap", "gui/\(uid)", plist.path]]
-           : [["launchctl", "disable", "gui/\(uid)/\(label)"], ["launchctl", "bootout", "gui/\(uid)/\(label)"]]
+    enable ? [["/bin/launchctl", "enable", "gui/\(uid)/\(label)"], ["/bin/launchctl", "bootstrap", "gui/\(uid)", plist.path]]
+           : [["/bin/launchctl", "disable", "gui/\(uid)/\(label)"], ["/bin/launchctl", "bootout", "gui/\(uid)/\(label)"]]
 }
 
 public func setAgent(_ agent: LaunchAgent, enabled: Bool, uid: uid_t = getuid()) throws {
@@ -75,8 +75,8 @@ public func setAgent(_ agent: LaunchAgent, enabled: Bool, uid: uid_t = getuid())
 }
 
 public func liveLaunchState(uid: uid_t = getuid()) -> (disabled: Set<String>, loaded: [String: Bool]) {
-    (parseDisabled(String(decoding: run(["launchctl", "print-disabled", "gui/\(uid)"]).1, as: UTF8.self)),
-     parseLoaded(String(decoding: run(["launchctl", "list"]).1, as: UTF8.self)))
+    (parseDisabled(String(decoding: run(["/bin/launchctl", "print-disabled", "gui/\(uid)"]).1, as: UTF8.self)),
+     parseLoaded(String(decoding: run(["/bin/launchctl", "list"]).1, as: UTF8.self)))
 }
 
 // MARK: - Background Task Management (System Settings → Login Items)
@@ -158,7 +158,7 @@ public func legacyDisallowed(_ output: String, uid: uid_t) -> Set<String> {
 /// Takes a few seconds, and macOS asks for an administrator password when an app runs it, so only call it from a click.
 /// Nil when `sfltool` is missing, refuses, or the password is cancelled.
 public func liveBackgroundItems(uid: uid_t = getuid()) -> (items: [BackgroundItem], legacyDisallowed: Set<String>)? {
-    let output = String(decoding: run(["sfltool", "dumpbtm"]).1, as: UTF8.self)
+    let output = String(decoding: run(["/usr/bin/sfltool", "dumpbtm"]).1, as: UTF8.self)
     guard output.contains("Records for UID \(uid) ") else { return nil }
     return (parseBTM(output, uid: uid), legacyDisallowed(output, uid: uid))
 }
@@ -192,11 +192,11 @@ public enum Maintenance: String, CaseIterable, Sendable, Identifiable {
 
     public var command: [String] {
         switch self {
-        case .dns: adminWrapped("dscacheutil -flushcache; killall -HUP mDNSResponder")
-        case .spotlight: adminWrapped("mdutil -E /")
+        case .dns: adminWrapped("/usr/bin/dscacheutil -flushcache; /usr/bin/killall -HUP mDNSResponder")
+        case .spotlight: adminWrapped("/usr/bin/mdutil -E /")
         case .launchServices: ["/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
                                "-gc", "-r", "-f", "-apps", "local,system,user"]
-        case .quickLook: ["qlmanage", "-r", "cache"]
+        case .quickLook: ["/usr/bin/qlmanage", "-r", "cache"]
         }
     }
 }
@@ -209,7 +209,7 @@ public func adminWrapped(_ shell: String) -> [String] {
                  "on error number -128",
                  "return \"cancelled\"",
                  "end try"]
-    return ["osascript"] + lines.flatMap { ["-e", $0] }
+    return ["/usr/bin/osascript"] + lines.flatMap { ["-e", $0] }
 }
 
 public enum MaintenanceResult: Sendable { case done, cancelled }
