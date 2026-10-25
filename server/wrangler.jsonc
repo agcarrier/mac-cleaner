@@ -1,0 +1,9 @@
+{
+  "name": "spruce-supporter",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "routes": [{ "pattern": "spruce.andrewcarrier.dev", "custom_domain": true }],
+  // Secrets (never here): wrangler secret put STRIPE_SECRET_KEY / LICENSE_PRIVATE_KEY
+  "vars": { "PAYMENT_LINK_ID": "" },
+  "observability": { "enabled": true }
+}
