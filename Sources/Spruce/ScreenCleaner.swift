@@ -16,12 +16,15 @@ final class ScreenCleaner {
     @ObservationIgnored private var timer: Timer?
     /// Read by the tap callback, which runs on the main run loop.
     @ObservationIgnored fileprivate var combo = KeyCombo.standard
+    /// Drawn behind the countdown. Black unless a supporter picked a scene.
+    @ObservationIgnored fileprivate(set) var scene = ScreenScene.black
 
     /// Starts the lock, or returns why it couldn't.
-    func start(combo: KeyCombo, duration: TimeInterval) -> String? {
+    func start(combo: KeyCombo, duration: TimeInterval, scene: ScreenScene = .black) -> String? {
         guard lock == nil else { return nil }
         guard AXIsProcessTrusted() else { return "Spruce needs Accessibility access first." }
         self.combo = combo
+        self.scene = scene
         // Every event type, including gestures and media keys. `.cghidEventTap` sees them before any app does.
         guard let tap = CGEvent.tapCreate(tap: .cghidEventTap, place: .headInsertEventTap, options: .defaultTap,
                                           eventsOfInterest: CGEventMask.max, callback: screenCleanTap,
@@ -114,7 +117,7 @@ struct OverlayView: View {
 
     var body: some View {
         ZStack {
-            Color.black
+            ScreenSceneView(scene: cleaner.scene)
             if let lock = cleaner.lock {
                 VStack(spacing: 14) {
                     Text(lock.countdown(at: cleaner.now))

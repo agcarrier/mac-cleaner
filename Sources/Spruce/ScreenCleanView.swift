@@ -7,6 +7,8 @@ struct ScreenCleanView: View {
     let cleaner: ScreenCleaner
     @AppStorage(SettingsKey.unlockCombo) private var combo = KeyCombo.standard
     @AppStorage(SettingsKey.screenCleanSeconds) private var seconds = ScreenLock.defaultDuration
+    @AppStorage(SettingsKey.screenCleanScene) private var scene = ScreenScene.black
+    @Environment(SupporterModel.self) private var supporter
     @State private var trusted = AXIsProcessTrusted()
     @State private var problem: String?
 
@@ -23,7 +25,7 @@ struct ScreenCleanView: View {
             .card()
             .padding(.top, 8)
             if trusted {
-                PillButton("Start Screen Clean") { problem = cleaner.start(combo: combo, duration: seconds) }
+                PillButton("Start Screen Clean") { problem = cleaner.start(combo: combo, duration: seconds, scene: supporter.isSupporter ? scene : .black) }
             } else {
                 Text("To block the keyboard and trackpad, macOS needs you to give Spruce Accessibility access. Spruce uses it only while Screen Clean is running.")
                     .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 440)

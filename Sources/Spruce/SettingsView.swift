@@ -12,6 +12,7 @@ enum SettingsKey {
     static let rustleSound = "rustleSound"
     static let accentTheme = "accentTheme"
     static let seasonalIcon = "seasonalIcon"
+    static let screenCleanScene = "screenCleanScene"
 }
 
 /// My Clutter's folders, one path per line in UserDefaults. Default: Desktop, Documents, Downloads, Pictures.
@@ -37,6 +38,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.rustleSound) private var rustle = false
     @AppStorage(SettingsKey.accentTheme) private var theme = AccentTheme.forest
     @AppStorage(SettingsKey.seasonalIcon) private var icon = SeasonalIcon.classic
+    @AppStorage(SettingsKey.screenCleanScene) private var scene = ScreenScene.black
     @AppStorage(SettingsKey.installerDays) private var installerDays = 30
     @AppStorage(SettingsKey.idleProjectDays) private var idleProjectDays = 60
     @AppStorage(SettingsKey.unlockCombo) private var combo = KeyCombo.standard
@@ -91,6 +93,12 @@ struct SettingsView: View {
             }
             Section("Screen Clean") {
                 ComboRecorder(combo: $combo)
+                Picker(selection: $scene) {
+                    ForEach(ScreenScene.allCases) { Text($0.title).tag($0) }
+                } label: {
+                    SupporterLabel("Scene", detail: "What's behind the countdown. Every scene stays dim so smudges still show.")
+                }
+                .disabled(!supporter.isSupporter)
                 Picker(selection: $seconds) {
                     Text("30 seconds").tag(30.0)
                     ForEach([1, 2, 3, 5, 10], id: \.self) { Text("\($0) minute\($0 == 1 ? "" : "s")").tag(Double($0 * 60)) }
