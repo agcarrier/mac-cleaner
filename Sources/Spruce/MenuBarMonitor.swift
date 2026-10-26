@@ -32,7 +32,9 @@ private func percent(_ share: Double) -> String { share.formatted(.percent.preci
 /// The app icon's spruce as a menu bar template image (black, so macOS tints it for light and dark menu bars): four tiers,
 /// each flaring past the one above with a thin gap between, and a trunk. Drawn bottom tier first; each higher tier clears a
 /// gap into the one below, then fills.
-private let spruceIcon: NSImage = {
+/// Supporters' seasonal icons add a mark: snow, a falling leaf, blossoms cut into the tiers, or a star.
+@MainActor private func spruceIcon(_ variant: SeasonalIcon) -> NSImage {
+    if let cached = spruceIcons[variant] { return cached }
     let image = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
         // (top y, bottom y, half width at top, half width at bottom)
         let tiers: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [(8.6, 15.0, 1.6, 8.1), (5.8, 12.0, 1.1, 6.5), (3.0, 8.9, 0.6, 5.0), (0.6, 5.8, 0, 3.5)]
@@ -57,15 +59,45 @@ private let spruceIcon: NSImage = {
             tier.lineWidth = 0.6  // rounds the tips
             tier.stroke()
         }
+        func dot(_ x: CGFloat, _ y: CGFloat, _ r: CGFloat) -> NSBezierPath { NSBezierPath(ovalIn: NSRect(x: x - r, y: y - r, width: r * 2, height: r * 2)) }
+        switch variant {
+        case .classic: break
+        case .snowy:
+            [dot(2.2, 2.4, 0.8), dot(15.6, 1.6, 0.7), dot(16.4, 6.2, 0.8), dot(1.4, 8.6, 0.7)].forEach { $0.fill() }
+        case .autumn:
+            let leaf = NSBezierPath()
+            leaf.move(to: NSPoint(x: 14.2, y: 1.0))
+            leaf.curve(to: NSPoint(x: 17.4, y: 4.4), controlPoint1: NSPoint(x: 17.0, y: 0.8), controlPoint2: NSPoint(x: 17.6, y: 2.4))
+            leaf.curve(to: NSPoint(x: 14.2, y: 1.0), controlPoint1: NSPoint(x: 15.0, y: 4.6), controlPoint2: NSPoint(x: 14.0, y: 3.0))
+            leaf.fill()
+        case .blossom:
+            NSGraphicsContext.current?.compositingOperation = .clear
+            [dot(7.4, 7.8, 0.75), dot(11.0, 10.6, 0.75), dot(6.6, 12.8, 0.75), dot(10.0, 4.6, 0.6)].forEach { $0.fill() }
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+        case .night:
+            let star = NSBezierPath()
+            let (cx, cy) = (15.2, 2.8)
+            for i in 0..<8 {
+                let r: CGFloat = i % 2 == 0 ? 2.4 : 0.7
+                let a = CGFloat(i) * .pi / 4 - .pi / 2
+                let p = NSPoint(x: cx + r * cos(a), y: cy + r * sin(a))
+                i == 0 ? star.move(to: p) : star.line(to: p)
+            }
+            star.close()
+            star.fill()
+        }
         return true
     }
     image.isTemplate = true
+    spruceIcons[variant] = image
     return image
-}()
+}
+
+@MainActor private var spruceIcons: [SeasonalIcon: NSImage] = [:]
 
 /// Just the tree. A template NSImage given straight to Image is what the menu bar draws reliably.
 struct MonitorLabel: View {
-    var body: some View { Image(nsImage: spruceIcon) }
+    var body: some View { Image(nsImage: spruceIcon(Appearance.shared.icon)) }
 }
 
 struct MonitorPanel: View {

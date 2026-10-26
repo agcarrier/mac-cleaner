@@ -10,6 +10,8 @@ enum SettingsKey {
     static let clutterFolders = "clutterFolders"
     static let menuBarMonitor = "menuBarMonitor"
     static let rustleSound = "rustleSound"
+    static let accentTheme = "accentTheme"
+    static let seasonalIcon = "seasonalIcon"
 }
 
 /// My Clutter's folders, one path per line in UserDefaults. Default: Desktop, Documents, Downloads, Pictures.
@@ -33,6 +35,8 @@ func currentThresholds() -> Thresholds {
 struct SettingsView: View {
     @Environment(SupporterModel.self) private var supporter
     @AppStorage(SettingsKey.rustleSound) private var rustle = false
+    @AppStorage(SettingsKey.accentTheme) private var theme = AccentTheme.forest
+    @AppStorage(SettingsKey.seasonalIcon) private var icon = SeasonalIcon.classic
     @AppStorage(SettingsKey.installerDays) private var installerDays = 30
     @AppStorage(SettingsKey.idleProjectDays) private var idleProjectDays = 60
     @AppStorage(SettingsKey.unlockCombo) private var combo = KeyCombo.standard
@@ -66,6 +70,19 @@ struct SettingsView: View {
                     }
                 }
             }
+            Section("Appearance") {
+                Picker(selection: $icon) {
+                    ForEach(SeasonalIcon.allCases) { Text($0.title).tag($0) }
+                } label: {
+                    SupporterLabel("Icon", detail: "Shown in the Dock and menu bar while Spruce runs.")
+                }
+                Picker(selection: $theme) {
+                    ForEach(AccentTheme.allCases) { Text($0.title).tag($0) }
+                } label: {
+                    SupporterLabel("Accent colors", detail: "Each tool's color across Spruce.")
+                }
+            }
+            .disabled(!supporter.isSupporter)
             Section("Sounds") {
                 Toggle(isOn: $rustle) {
                     SupporterLabel("Rustle when a clean finishes", detail: "A soft rustle of leaves. Off by default.")

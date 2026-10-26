@@ -66,6 +66,8 @@ struct RootView: View {
     @AppStorage(SettingsKey.installerDays) private var installerDays = 30
     @AppStorage(SettingsKey.idleProjectDays) private var idleProjectDays = 60
     @AppStorage(SettingsKey.clutterFolders) private var clutterFolders = ""
+    @AppStorage(SettingsKey.accentTheme) private var theme = AccentTheme.forest
+    @AppStorage(SettingsKey.seasonalIcon) private var icon = SeasonalIcon.classic
 
     var body: some View {
         NavigationSplitView {
@@ -95,6 +97,9 @@ struct RootView: View {
         .onChange(of: installerDays) { resetResults() }
         .onChange(of: idleProjectDays) { resetResults() }
         .onChange(of: clutterFolders) { [state.duplicates, state.similar].forEach { $0.reset() } }
+        .onChange(of: theme, initial: true) { Appearance.shared.update(isSupporter: state.supporter.isSupporter) }
+        .onChange(of: icon) { Appearance.shared.update(isSupporter: state.supporter.isSupporter) }
+        .onChange(of: state.supporter.isSupporter) { Appearance.shared.update(isSupporter: state.supporter.isSupporter) }
         // The key is untrusted input: unlock() only stores it if the signature checks out.
         .onOpenURL { url in
             guard let key = unlockKey(from: url) else { return }

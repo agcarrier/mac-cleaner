@@ -39,7 +39,11 @@ enum Tool: String, CaseIterable, Identifiable {
         }
     }
 
-    var tint: Color {
+    /// The tool's color in the active accent theme.
+    @MainActor var tint: Color { Appearance.shared.theme.tint(for: self) }
+
+    /// Spruce's own colors, the Forest theme.
+    var forestTint: Color {
         switch self {
         case .smartCare: .green
         case .cleanup: .orange
