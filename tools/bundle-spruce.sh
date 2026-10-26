@@ -12,7 +12,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$OUT/spm/release/Spruce" "$APP/Contents/MacOS/Spruce"
 [ -f art/Spruce.icns ] && cp art/Spruce.icns "$APP/Contents/Resources/Spruce.icns"
-cp art/rustle.caf art/icons/*.png "$APP/Contents/Resources/"
+cp art/rustle.caf art/icons/*.png art/Thanks.json "$APP/Contents/Resources/"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

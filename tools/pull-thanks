@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Before a release: lists the names supporters typed into the Payment Link's optional thank-you field, shows them
+for review, and writes art/Thanks.json only after you type yes. Needs a restricted, read-only Stripe key:
+
+    STRIPE_READ_KEY=rk_live_… PAYMENT_LINK_ID=plink_… tools/pull-thanks
+"""
+import json, os, pathlib, sys, urllib.parse, urllib.request
+
+key, link = os.environ.get("STRIPE_READ_KEY"), os.environ.get("PAYMENT_LINK_ID")
+if not key or not link:
+    sys.exit("Set STRIPE_READ_KEY (restricted, reads Checkout Sessions) and PAYMENT_LINK_ID (plink_…).")
+
+names, after = [], None
+while True:
+    q = {"payment_link": link, "status": "complete", "limit": "100"}
+    if after:
+        q["starting_after"] = after
+    req = urllib.request.Request("https://api.stripe.com/v1/checkout/sessions?" + urllib.parse.urlencode(q),
+                                 headers={"Authorization": f"Bearer {key}"})
+    page = json.load(urllib.request.urlopen(req))
+    for s in page["data"]:
+        if s.get("payment_status") != "paid":
+            continue
+        for field in s.get("custom_fields") or []:
+            value = (field.get("text") or {}).get("value") or ""
+            if value.strip():
+                names.append(value.strip())
+    if not page["has_more"]:
+        break
+    after = page["data"][-1]["id"]
+
+print("Names as typed (Spruce trims, caps at 40 characters and drops duplicates):")
+for n in names:
+    print("  " + n)
+if input("Ship these in Thanks.json? Type yes: ") != "yes":
+    sys.exit("Nothing written.")
+out = pathlib.Path(__file__).resolve().parent.parent / "art" / "Thanks.json"
+out.write_text(json.dumps(names, ensure_ascii=False, indent=2) + "\n")
+print(f"Wrote {out}. Remove any name by editing the file before building.")

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import MacCleanerCore
 import SpruceKit
@@ -16,6 +17,11 @@ struct SpruceApp: App {
                 .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
         }
         .defaultSize(width: 900, height: 600)
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About Spruce") { showAbout() }
+            }
+        }
 
         Settings {
             SettingsView().environment(state.supporter)
@@ -132,4 +138,19 @@ private struct HiddenToolbarTitle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(macOS 15.0, *) { content.toolbar(removing: .title) } else { content }
     }
+}
+
+/// The standard About panel, with supporters who asked to be thanked by name.
+@MainActor private func showAbout() {
+    let names = bundledThanks()
+    var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+    if !names.isEmpty {
+        let style = NSMutableParagraphStyle()
+        style.alignment = .center
+        options[.credits] = NSAttributedString(string: "Thank you to Spruce's supporters:\n" + names.joined(separator: " · "),
+                                               attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor,
+                                                            .paragraphStyle: style])
+    }
+    NSApp.orderFrontStandardAboutPanel(options: options)
+    NSApp.activate()
 }

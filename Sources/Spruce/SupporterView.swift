@@ -15,6 +15,7 @@ struct SupporterView: View {
                     ToolHeader(tool: .supporter, title: "Thank you", subtitle: "You help keep Spruce free for everyone.")
                     forest
                     thanked
+                    thankYouList
                 } else {
                     ToolHeader(tool: .supporter)
                     forest
@@ -45,6 +46,20 @@ struct SupporterView: View {
                 .padding(12)
                 .card()
             }
+        }
+    }
+
+    @ViewBuilder private var thankYouList: some View {
+        let names = bundledThanks()
+        if !names.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Fellow supporters").font(.headline)
+                Text(names.joined(separator: " · ")).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                Text("Want your name here? Add it at checkout, or email Andrew.").font(.caption).foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .card()
         }
     }
 
