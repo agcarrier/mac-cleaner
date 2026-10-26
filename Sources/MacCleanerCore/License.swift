@@ -18,10 +18,14 @@ public enum License {
         return prefix + payload.base64URL + "." + (try! signer.signature(for: payload)).base64URL
     }
 
-    /// Trims, drops all whitespace (email clients wrap long strings) and restores a missing prefix.
+    /// Keeps only the key's own characters (mail clients wrap long strings and slip in invisible ones), drops a
+    /// trailing period from a sentence, and restores the prefix in any case or when it's missing.
     public static func normalize(_ key: String) -> String {
-        let compact = key.filter { !$0.isWhitespace }
-        return compact.hasPrefix(prefix) ? compact : prefix + compact
+        let allowed = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.")
+        var body = Substring(String(key.filter { allowed.contains($0) }))
+        if body.lowercased().hasPrefix(prefix.lowercased()) { body = body.dropFirst(prefix.count) }
+        while body.hasSuffix(".") { body = body.dropLast() }
+        return prefix + body
     }
 
     public static func verify(_ key: String, with publicKey: Curve25519.Signing.PublicKey = License.publicKey) -> Bool {

@@ -6,6 +6,8 @@ export interface Env {
   LICENSE_PRIVATE_KEY: string;
   /** Optional: only sessions from this Payment Link (plink_…) earn a key. */
   PAYMENT_LINK_ID?: string;
+  /** Caps /find lookups, which spend Stripe API calls from Andrew's whole account. */
+  FIND_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
 }
 
 const COPY_SCRIPT = `document.getElementById("copy").addEventListener("click",e=>{navigator.clipboard.writeText(document.getElementById("key").textContent);e.target.textContent="Copied"})`;
@@ -69,6 +71,13 @@ export default {
     if (url.pathname === "/find" && request.method === "POST") {
       const form = await request.formData().catch(() => null);
       const email = String(form?.get("email") ?? ""), receipt = String(form?.get("receipt") ?? "");
+      // Per address, and per email so one buyer's receipt numbers can't be guessed from many addresses.
+      const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+      for (const key of [`ip:${ip}`, `email:${email.trim().toLowerCase()}`]) {
+        if (env.FIND_LIMITER && !(await env.FIND_LIMITER.limit({ key })).success) {
+          return page("Slow down — Spruce", `<h1>Too many tries</h1><p>Wait a minute, then try again.</p>`, 429);
+        }
+      }
       const session = await findByEmailAndReceipt(email, receipt, env.STRIPE_SECRET_KEY, env.PAYMENT_LINK_ID);
       // One reply for a wrong receipt and an unknown email, so the form can't confirm who has paid.
       return session ? keyPage(session.id, env) : findForm("No payment matches that email and receipt number.");

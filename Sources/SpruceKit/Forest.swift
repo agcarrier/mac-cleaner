@@ -8,12 +8,14 @@ public struct ForestLedger: Codable, Equatable, Sendable {
     public private(set) var treesPlanted: [Date] = []
 
     public static let bytesPerTree: Int64 = 1_000_000_000
+    /// A petabyte: far past any real Mac's lifetime of cleaning, and small enough that the trees always fit in memory.
+    static let maxBytes: Int64 = 1_000_000_000_000_000
 
     public init() {}
 
     public mutating func record(_ bytes: Int64, at date: Date) {
         guard bytes > 0 else { return }
-        freedBytes = freedBytes.addingReportingOverflow(bytes).overflow ? .max : freedBytes + bytes
+        freedBytes = min(Self.maxBytes, freedBytes + min(bytes, Self.maxBytes))  // both ≤ maxBytes, so no overflow
         let due = Int(freedBytes / Self.bytesPerTree) - treesPlanted.count
         if due > 0 { treesPlanted += Array(repeating: date, count: due) }
     }
@@ -23,6 +25,10 @@ public struct ForestLedger: Codable, Equatable, Sendable {
         // A hand-edited or damaged file never shows a negative total.
         freedBytes = max(0, try c.decode(Int64.self, forKey: .freedBytes))
         treesPlanted = try c.decode([Date].self, forKey: .treesPlanted)
+        // Treated like a corrupt file: a hand-edited total this large would mean billions of trees on the next clean.
+        guard freedBytes <= Self.maxBytes, treesPlanted.count <= Int(Self.maxBytes / Self.bytesPerTree) else {
+            throw DecodingError.dataCorruptedError(forKey: .freedBytes, in: c, debugDescription: "Implausible forest")
+        }
     }
 }
 

@@ -5,5 +5,7 @@
   "routes": [{ "pattern": "spruce.andrewcarrier.dev", "custom_domain": true }],
   // Secrets (never here): wrangler secret put STRIPE_SECRET_KEY / LICENSE_PRIVATE_KEY
   "vars": { "PAYMENT_LINK_ID": "" },
+  // 10 lookups a minute per address and per email, per Cloudflare location.
+  "ratelimits": [{ "name": "FIND_LIMITER", "namespace_id": "1701", "simple": { "limit": 10, "period": 60 } }],
   "observability": { "enabled": true }
 }

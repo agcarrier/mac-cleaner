@@ -52,3 +52,13 @@ private func tempFile() -> URL {
     #expect(ForestStore(file: nested).ledger.treesPlanted.count == 1)
     try? FileManager.default.removeItem(at: nested.deletingLastPathComponent())
 }
+
+@MainActor @Test func absurdLedgerStartsEmpty() throws {
+    let file = tempFile()
+    defer { try? FileManager.default.removeItem(at: file) }
+    try Data(#"{"freedBytes":9000000000000000000,"treesPlanted":[]}"#.utf8).write(to: file)
+    let store = ForestStore(file: file)
+    #expect(store.ledger == ForestLedger())
+    store.record(gb)  // must not try to plant billions of trees
+    #expect(store.ledger.treesPlanted.count == 1)
+}

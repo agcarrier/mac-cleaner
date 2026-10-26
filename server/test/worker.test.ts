@@ -73,6 +73,19 @@ describe("find", () => {
     expect(await (await findPost("a@b.c", "")).text()).not.toContain("SPRUCE-");
   });
 
+  it("rateLimitedFindSkipsStripe", async () => {
+    const calls = stubStripe([{ id: "cs_test_vector", payment_status: "paid", email: "a@b.c", receipt: "1111-2222" }]);
+    const keys: string[] = [];
+    const limited = { ...env, FIND_LIMITER: { limit: async ({ key }: { key: string }) => (keys.push(key), { success: false }) } };
+    const res = await worker.fetch(new Request("https://spruce.test/find", {
+      method: "POST", headers: { "cf-connecting-ip": "203.0.113.9" }, body: new URLSearchParams({ email: "a@b.c", receipt: "1111-2222" }),
+    }), limited);
+    expect(res.status).toBe(429);
+    expect(await res.text()).not.toContain("SPRUCE-");
+    expect(calls).toEqual([]);
+    expect(keys[0]).toBe("ip:203.0.113.9");
+  });
+
   it("showsForm", async () => {
     expect(await (await get("/find")).text()).toContain('<form method="post"');
   });

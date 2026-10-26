@@ -61,3 +61,13 @@ private let signer = Curve25519.Signing.PrivateKey()
     #expect(License.verify(vector["key"]!, with: publicKey))
     #expect(License.payload(sessionID: vector["sessionID"]!) == "spruce-supporter|1|cs_test_vector")
 }
+
+@Test func pastedKeyWithMailNoiseVerifies() {
+    let key = License.make(sessionID: "cs_test_1", signer: signer)
+    let body = key.dropFirst("SPRUCE-".count)
+    #expect(License.verify(key + ".", with: signer.publicKey))                    // end of a sentence
+    #expect(License.verify("spruce-" + body, with: signer.publicKey))             // lowercase prefix
+    let mid = body.index(body.startIndex, offsetBy: 20)
+    #expect(License.verify("SPRUCE-" + body[..<mid] + "\u{200B}\u{AD}" + body[mid...], with: signer.publicKey))  // HTML mail
+    #expect(License.verify("Key: " + key, with: signer.publicKey) == false)       // still not a free-for-all
+}
