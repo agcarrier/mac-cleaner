@@ -9,7 +9,7 @@ import MacCleanerCore
 public final class SupporterModel {
     public static let defaultsKey = "supporterKey"
     /// Spruce's Stripe Payment Link (pay what you want, $3 minimum).
-    public static let paymentLink = URL(string: "https://buy.stripe.com/test_placeholder")!  // Set in Task 9.
+    public static let paymentLink = URL(string: "https://buy.stripe.com/8x2dRa1usdWd7pdfeIbsc01")!
     public static let findKeyPage = URL(string: "https://spruce.andrewcarrier.dev/find")!
     public static let directLine = URL(string: "mailto:andrew@carrierpigeonai.dev?subject=Spruce%20idea")!
 

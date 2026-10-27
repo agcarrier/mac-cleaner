@@ -4,8 +4,8 @@ import Foundation
 /// Spruce Supporter keys: `SPRUCE-<base64url(payload)>.<base64url(Ed25519 signature)>`, signed by the Worker in `server/`
 /// after Stripe confirms payment, verified here offline. The payload names a purchase, never a person.
 public enum License {
-    /// Placeholder until Andrew runs `swift tools/make-license-keys.swift`; its private half was never saved.
-    static let publicKeyBase64 = "JBWPvsG2HsnZeH/ZsV5P+r5aaLOPy6t5zLwDK+YnCDI="
+    /// Its private half lives only in the Worker (LICENSE_PRIVATE_KEY).
+    static let publicKeyBase64 = "ZDfI0UG1SO+tjvDzuEdwhmKrVeZ8rUEowse/ufUX+mA="
     public static let publicKey = try! Curve25519.Signing.PublicKey(rawRepresentation: Data(base64Encoded: publicKeyBase64)!)
 
     static let prefix = "SPRUCE-"

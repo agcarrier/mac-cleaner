@@ -4,7 +4,7 @@
   "compatibility_date": "2026-10-01",
   "routes": [{ "pattern": "spruce.andrewcarrier.dev", "custom_domain": true }],
   // Secrets (never here): wrangler secret put STRIPE_SECRET_KEY / LICENSE_PRIVATE_KEY
-  "vars": { "PAYMENT_LINK_ID": "" },
+  "vars": { "PAYMENT_LINK_ID": "plink_1UVC0sKAjsHaRsFS2BHNQJzx" },
   // 10 lookups a minute per address and per email, per Cloudflare location.
   "ratelimits": [{ "name": "FIND_LIMITER", "namespace_id": "1701", "simple": { "limit": 10, "period": 60 } }],
   "observability": { "enabled": true }
